@@ -35,7 +35,7 @@ void bitsvectorOld(bitsvector *f)
     free(f);
   }
 
-N24 bitsvectorGet_;
+
 
 /*
    N24 bitsvectorGet FUNCTION(Bitsvector f, N5 n) {return bitsvectorGet(f, n);}

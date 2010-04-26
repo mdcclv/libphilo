@@ -8,7 +8,7 @@ CC= gcc
 PH_BUILDENV = 
 PH_LDSEARCHFLAGS = 
 
-all: 	search4
+all: 	search4	libphilo.so
 
 search4: search4.c search.o retreive.o gmap.o word.o blockmap.o level.o out.o log.o plugin/libindex.a db/db.o db/bitsvector.o db/unpack.o
 	$(PH_BUILDENV) $(CC) $(CFLAGS) $(CPPFLAGS) $(PH_CFLAGS) $(LDFLAGS) $(PH_LDSEARCHFLAGS) search4.c search.o retreive.o gmap.o word.o blockmap.o level.o out.o log.o db/db.o db/bitsvector.o db/unpack.o plugin/libindex.a -lgdbm -o search4

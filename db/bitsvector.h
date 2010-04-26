@@ -34,20 +34,19 @@
       N32 b;
     };
 
-  typedef struct Bitsvector bitsvector;
+typedef struct Bitsvector bitsvector;
 
-  extern bitsvector* bitsvectorNew(N8 *v);
+bitsvector *bitsvectorNew(N8 *v);
 
-  extern void bitsvectorOld(bitsvector *f);
+void bitsvectorOld(bitsvector *f);
 
-/*  #define bitsvectorTell(x)	((((x)->o) << 3) - (x)->s) */
+N64 bitsvectorGet (bitsvector *f, N8 n);
+
   #define bitsvectorTell(x)	((((x)->o) << 3) + (x)->s)
 
   #define bitsfileSeek(x, n)	\
     begin (x)->o = ((n) + (x)->o) >> 3; \
       (x)->s = 0, (Void)bitsvectorGet(x, n & 7); end
-
-  extern N64 bitsvectorGet FUNCTION (bitsvector *f, N8 size);
 
 
   #define bitsvectorGet24(x, n) \
