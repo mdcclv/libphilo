@@ -65,6 +65,7 @@ Search new_search( dbh *db, Z8 *method, Z8 *arg, int ascii, int limit, int corpu
 	  if ( ( s->map->gm_l = hit_crp_args ( s->hit_def, s->map->gm_h, &s->map->gm_f, corpussize, corpusfile ) ) <= 0 )
 	    {
 	      strcpy ( s->errstr, BAD_CORPUS_ARGZ );
+	      //Should't return an int here.
 	      return BAD_ARGZ;
 	    }
 	  s->map->gm_eod = s->map->gm_l;
