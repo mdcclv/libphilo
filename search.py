@@ -7,7 +7,7 @@ stdin = stdlib.fdopen(sys.stdin.fileno(),"r")
 
 libphilo = cdll.LoadLibrary("./libphilo.dylib")
 
-db = libphilo.init_dbh_folder("/var/lib/philologic/databases/mvotest5/")
+db = libphilo.init_dbh_folder("/var/lib/philologic/databases/PerseusGreekDev/")
 
 s = libphilo.new_search(db,"phrase",None,1,100000,0,None)
 

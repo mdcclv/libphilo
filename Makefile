@@ -8,10 +8,13 @@ CC= gcc
 PH_BUILDENV = 
 PH_LDSEARCHFLAGS = 
 
-all: 	search4	libphilo.so
+all: 	search4	libphilo.dylib
 
 search4: search4.c search.o retreive.o gmap.o word.o blockmap.o level.o out.o log.o plugin/libindex.a db/db.o db/bitsvector.o db/unpack.o
 	$(PH_BUILDENV) $(CC) $(CFLAGS) $(CPPFLAGS) $(PH_CFLAGS) $(LDFLAGS) $(PH_LDSEARCHFLAGS) search4.c search.o retreive.o gmap.o word.o blockmap.o level.o out.o log.o db/db.o db/bitsvector.o db/unpack.o plugin/libindex.a -lgdbm -o search4
+
+libphilo.dylib: search.o word.o retreive.o level.o gmap.o blockmap.o log.o out.o plugin/libindex.a db/db.o db/bitsvector.o db/unpack.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -dynamiclib -std=gnu99 search.o word.o retreive.o level.o gmap.o blockmap.o log.o out.o plugin/libindex.a db/db.o db/bitsvector.o db/unpack.o -lgdbm -o libphilo.dylib
 
 db/db.o:  db/db.c db/db.h db/bitsvector.c db/bitsvector.h
 	(cd db; make db.o)
