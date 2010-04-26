@@ -1,38 +1,0 @@
-7[?47h[?1h=[30;1H[7m----:---F1  [m[m[7m[1m*scratch*   [m[m[7m   All L1     (Fundamental)-----------------------------------------------------------------------------------------------------------------------------------------------------------[m[m
-[A[H[H[2J[31;1HLoading encoded-kb...[K[H[31;22Hdone[H[31;1H[K[?1l>[2J[?47l8[m7[?47h[?1h=[31;1HFor information about the GNU Project and its goals, type C-h C-p.[K[H
-[31;1HLoading python...[K[H
-[31;9Heasyme[4hnu[H
-[4l[31;20Hdone[H
-[31;9Hpython...done[K[H
-[31;1HLoading python...done[K[H#!/usr/bin/python                                                                                                                                                                                             
-[A
-[1m[36mimport[m[m sys,os[K
-[1m[36mfrom[m[m ctypes [1m[36mimport[m[m *[K
-[33mstdlib[m[m=cdll.LoadLibrary([32m"libc.dylib"[m)[K
-[K
-[33mstdin[m[m = stdlib.fdopen(sys.stdin.fileno(),[32m"r"[m)[K
-[K
-[33mlibphilo[m[m = cdll.LoadLibrary([32m"./libphilo.dylib"[m)[K
-[K
-[33mdb[m[m = libphilo.init_dbh_folder([32m"/var/lib/philologic/databases/mvotest5/"[m)[K
-[K
-[33ms[m[m = libphilo.new_search(db,[32m"phrase"[m,[1m[36mNone[m[m,1,100000,0,[1m[36mNone[m[m)[K
-[K
-libphilo.process_input(s,stdin)[K
-[K
-[K
-libphilo.search_pass(s,0)[K
-[K
-[K
-[K
-[K
-[K
-[K
-[K
-[K
-[K
-[K
-[K
-[K
-[7m-11-:---F1  [m[m[7m[1msearch.py   [m[m[7m   All L1     (Python)----------------------------------------------------------------------------------------------------------------------------------------------------------------[m[m
-[A[H[31;1H[K[Hl#!/usr/bin/python[30;6H[7m**[m[m[1;2H[31;1H[34mSave file /Users/rwhaling/philologic-v3.999999/search4/search.py? (y, n, !, ., q, C-r, d or C-h) [mSave file /Users/rwhaling/philologic-v3.999999/search4/search.py? (y, n, !, ., q, C-r, d or C-h) C-zType C-h for help.[K[1;2H[31;1H[34mSave file /Users/rwhaling/philologic-v3.999999/search4/search.py? (y, n, !, ., q, C-r, d or C-h) [mSave file /Users/rwhaling/philologic-v3.999999/search4/search.py? (y, n, !, ., q, C-r, d or C-h) C-cType C-h for help.[K[1;2H[31;1H[34mSave file /Users/rwhaling/philologic-v3.999999/search4/search.py? (y, n, !, ., q, C-r, d or C-h) [m
