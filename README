@@ -6,3 +6,5 @@ TODO:
 3)parallelize index merges.
 4)tighten up API's.
 5)Fix the log function int-casting problem.
+--
+Richard Whaling
