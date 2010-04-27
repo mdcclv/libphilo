@@ -1,0 +1,8 @@
+PhiloLogic 4 is still EXTREMELY pre-alpha.
+Only recommended for internal testing/intellectual curiosity purposes at this point.
+TODO:
+1)change "plugins" to "methods" for clarity.
+2)merge in index packing code.
+3)parallelize index merges.
+4)tighten up API's.
+5)Fix the log function int-casting problem.
