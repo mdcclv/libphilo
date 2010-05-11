@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
 	}
 	
 	//initialize gdbm.
-	gdbh = gdbm_open("index",0,GDBM_NEWDB, 0666,NULL);
+	gdbh = gdbm_open("index",0,GDBM_NEWDB, 0666,0);
 	if (gdbh == NULL) {
 		fprintf(stderr, "couldn't create index\n");
 		exit(2);
@@ -147,7 +147,7 @@ int hitbuffer_finish(hitbuffer *hb) {
 	}
 	else {
 		fprintf(stderr, "%s: %Ld [%Ld blocks]\n", hb->word, hb->freq, hb->dir_length);
-		write_dir(hb);
+//		write_dir(hb);
 		write_blk(hb);
 	}
 	return 0;
@@ -156,8 +156,8 @@ int hitbuffer_finish(hitbuffer *hb) {
 int add_to_dir(hitbuffer *hb, Z32 *data, N64 count) {
 	void *status;
 	while (hb->dir_malloced < ((hb->dir_length + count) * (hb->db->dbspec->fields) * sizeof(Z32)) ) {
-		status = realloc(hb->dir, 2 * hb->dir_malloced);
-		if (status) {
+		hb->dir = realloc(hb->dir, 2 * hb->dir_malloced);
+		if (hb->dir) {
 			hb->dir_malloced = 2 * hb->dir_malloced; //I'm trying to save time from calling malloc over and over again, but is this too aggressive?
 		}
 		else {
@@ -185,7 +185,7 @@ int add_to_block(hitbuffer *hb, Z32 *data, N64 count) {
 	N64 hits_per_block = (hb->db->dbspec->block_size * 8)  / (hb->db->dbspec->bitwidth);
 	N64 free_space = hits_per_block - hb->blk_length;
 
-	if (count <= (hits_per_block - hb->blk_length) ) { 
+	if (count <= (hits_per_block - hb->blk_length) ) { //
 		//if (remaining < hits_to_copy) {hits_to_copy = remaining;}
 		memcpy(hb->blk + (hb->blk_length * (hb->db->dbspec->fields) ),
 			   data,
@@ -225,7 +225,7 @@ int write_dir(hitbuffer *hb) {
 	}
 	
 	buffer_size = ( (header_size + (hb->dir_length * dbs->bitwidth)  ) / 8) + 1;
-	valbuffer = malloc(buffer_size);
+	valbuffer = calloc(buffer_size, sizeof(char));
 	
 	if (valbuffer == NULL) {
 		//should add helpful error here.
@@ -240,6 +240,8 @@ int write_dir(hitbuffer *hb) {
 	compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq1_length);
 	offset += dbs->freq1_length / 8;
 	bit_offset = (bit_offset + dbs->freq1_length) % 8;
+
+	//should check type, write offset here.
 
 	for (i = 0; i < hb->dir_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
@@ -270,6 +272,7 @@ int write_blk(hitbuffer *hb) {
 	//Compress and write...
 	//Don't forget the block-end flag iff a block ends prematurely.
 	hb->blk_length = 0;
+	free(valbuffer);
 	return 0;
 }
 
