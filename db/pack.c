@@ -17,6 +17,7 @@ int main(int argc, char **argv) {
 	N64 uniq_words = 0;
 	char word[512];
 	char page[512];
+	char line[512];
 	int state;
 	Z32 hit[10];
 
@@ -65,15 +66,19 @@ int main(int argc, char **argv) {
 
 	hb->dir = malloc(hb->db->dbspec->block_size);
 	hb->dir_malloced = hb->db->dbspec->block_size;
-	hb->blk = malloc(hb->db->dbspec->block_size); // this is VERY conservative, but I should probably fix it.  
-	hb->blk_malloced = hb->db->dbspec->block_size;
+	hb->blk = malloc(hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block); // this is VERY conservative, but I should probably fix it.  
+	hb->blk_malloced = hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block;
 
 	hb->offset = 0;
 	//all this should go in a subroutine.
 
 	//scanning
 	while(1) {
-		state = fscanf(stdin,
+		if (fgets(line,511,stdin) == NULL) {
+			hitbuffer_finish(hb);
+			break;		
+		}
+		state = sscanf(line,
 		               "%s %d %d %d %d %d %d %d %d %s\n", 
 		               word, &hit[0],&hit[1],&hit[2],&hit[3],&hit[4],&hit[5],&hit[6],&hit[7], page
 					  );
@@ -86,10 +91,6 @@ int main(int argc, char **argv) {
 			}
 			hitbuffer_inc(hb, hit);
 			totalhits += 1;
-		}
-		else if (state == EOF) {
-			hitbuffer_finish(hb);
-			break;
 		}
 		else {
 			fprintf(stderr, "Couldn't understand hit.\n");
@@ -116,22 +117,22 @@ int hitbuffer_inc(hitbuffer *hb, Z32 *hit) {
 	int result;
 	if (hb->freq < PHILO_INDEX_CUTOFF) {
 		add_to_dir(hb, hit, 1);
+//		fprintf(stderr, "added hit for %s...\n", hb->word);
 	}
 	else if (hb->freq == PHILO_INDEX_CUTOFF) {
 			result = add_to_block(hb,hb->dir,PHILO_INDEX_CUTOFF - 1);
 			hb->dir_length = 0;
 			hb->type = 1;
 			result = add_to_dir(hb,hit,1);
-		//	fprintf(stderr, "started new block for %s...", hb->word);
+//			fprintf(stderr, "clearing dir.  started new block for %s...\n", hb->word);
 	}
 	if (hb->freq > PHILO_INDEX_CUTOFF) {
 		result = add_to_block(hb,hit,1);
 		if (result == PHILO_BLOCK_FULL) {
 			// IF the block add failed,
 			write_blk(hb);
-			hb->in_block = 0;
 			add_to_dir(hb,hit,1);
-		//	fprintf(stderr, "started new block for %s...", hb->word);
+//			fprintf(stderr, "started new block for %s...\n", hb->word);
 		}
 	}		
 	return 0;
@@ -147,7 +148,7 @@ int hitbuffer_finish(hitbuffer *hb) {
 	}
 	else {
 		fprintf(stderr, "%s: %Ld [%Ld blocks]\n", hb->word, hb->freq, hb->dir_length);
-//		write_dir(hb);
+		write_dir(hb);
 		write_blk(hb);
 	}
 	return 0;
@@ -165,7 +166,7 @@ int add_to_dir(hitbuffer *hb, Z32 *data, N64 count) {
 			exit(1);
 		}
 	}
-	memcpy(hb->dir + (hb->dir_length * (hb->db->dbspec->fields) ), //the address of the new hits
+	memcpy(&hb->dir[hb->dir_length * (hb->db->dbspec->fields)], //the address of the new hits
 		   data, //the data buffer
 	       count * (hb->db->dbspec->fields) * sizeof(Z32) //the size of the data buffer
 	      );
@@ -176,6 +177,7 @@ int add_to_dir(hitbuffer *hb, Z32 *data, N64 count) {
 int add_to_block(hitbuffer *hb, Z32 *data, N64 count) {
 	N64 maxsize = 0;
 	N64 remaining = count;
+	int i,j;
 	//N64 hits_to_copy = 0;
 
 	// we need to see if the block needs to be written; 
@@ -185,12 +187,21 @@ int add_to_block(hitbuffer *hb, Z32 *data, N64 count) {
 	N64 hits_per_block = (hb->db->dbspec->block_size * 8)  / (hb->db->dbspec->bitwidth);
 	N64 free_space = hits_per_block - hb->blk_length;
 
-	if (count <= (hits_per_block - hb->blk_length) ) { //
+	if (count <= free_space ) { //
 		//if (remaining < hits_to_copy) {hits_to_copy = remaining;}
-		memcpy(hb->blk + (hb->blk_length * (hb->db->dbspec->fields) ),
+
+
+/*		memmove(&hb->blk[hb->blk_length * (hb->db->dbspec->fields)] ,
 			   data,
 			   count * hb->db->dbspec->fields * sizeof(Z32)
 			  );
+*/
+		for (i = 0; i < count; i++) {
+			for (j = 0; j < hb->db->dbspec->fields; j++) {
+				hb->blk[((hb->blk_length + i)*hb->db->dbspec->fields) + j] = data[(i*hb->db->dbspec->fields) + j];
+			}
+		}
+
 		hb->blk_length += count;
 		//remaining -= hits_to_copy; 
 		return 0; //should probably return how many hits were packed.
@@ -225,7 +236,7 @@ int write_dir(hitbuffer *hb) {
 	}
 	
 	buffer_size = ( (header_size + (hb->dir_length * dbs->bitwidth)  ) / 8) + 1;
-	valbuffer = calloc(buffer_size, sizeof(char));
+	valbuffer = calloc(buffer_size + 1, sizeof(char));
 	
 	if (valbuffer == NULL) {
 		//should add helpful error here.
@@ -236,13 +247,23 @@ int write_dir(hitbuffer *hb) {
 	compress(valbuffer,offset,bit_offset,hb->type,dbs->type_length);
 	offset += dbs->type_length / 8;
 	bit_offset += dbs->type_length;
+	
+	if (hb->type == 0) {
+		compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq1_length);
+		offset += dbs->freq1_length / 8;
+		bit_offset = (bit_offset + dbs->freq1_length) % 8;
+	}
 
-	compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq1_length);
-	offset += dbs->freq1_length / 8;
-	bit_offset = (bit_offset + dbs->freq1_length) % 8;
-
-	//should check type, write offset here.
-
+	else if (hb->type == 1) {
+		compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq2_length);
+		offset += dbs->freq2_length / 8;
+		bit_offset = (bit_offset + dbs->freq2_length) % 8;
+		
+		compress(valbuffer,offset,bit_offset,hb->offset,dbs->offset_length);
+		offset += dbs->offset_length / 8;
+		bit_offset = (bit_offset + dbs->offset_length) % 8;
+	}
+	
 	for (i = 0; i < hb->dir_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
 			compress(valbuffer,offset,bit_offset,hb->dir[i*dbs->fields + j] + dbs->negatives[j], dbs->bitlengths[j]);
@@ -263,14 +284,41 @@ int write_dir(hitbuffer *hb) {
 }
 
 int write_blk(hitbuffer *hb) {
-	int width = 32;
-	int bytewidth = 4;
 	int offset = 0;
 	int bit_offset = 0;
+	int i,j;
+	dbspec *dbs = hb->db->dbspec;
+	int write_size = dbs->block_size;
 //	fprintf(stderr, "writing %Ld hits.\n", hb->blk_length);
-	char *valbuffer = malloc(hb->db->dbspec->block_size);
-	//Compress and write...
+	char *valbuffer = calloc(hb->db->dbspec->block_size, sizeof(char));
+	//Compress 
+	for (i = 0; i < hb->blk_length; i++) {
+		for (j = 0; j < dbs->fields; j++) {
+			compress(valbuffer,offset,bit_offset,hb->blk[i*dbs->fields + j] + dbs->negatives[j], dbs->bitlengths[j]);
+			offset += dbs->bitlengths[j] / 8;
+			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;			
+		}
+	}
 	//Don't forget the block-end flag iff a block ends prematurely.
+	if (hb->blk_length < dbs->hits_per_block) {
+		for (j = 0; j < dbs->fields; j++) {
+			compress(valbuffer,offset,bit_offset,(1 << dbs->bitlengths[j]) - 1, dbs->bitlengths[j]);
+			offset += dbs->bitlengths[j] / 8;
+			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;	
+		}	
+	}
+
+	if (bit_offset) {
+		offset = offset + 1; //iff we have a bit offset; blocks are byte-aligned.
+	}
+	if (hb->blk_length < dbs->hits_per_block) {
+		write_size = offset;
+	}
+	
+	fwrite(valbuffer,sizeof(char),write_size,hb->db->block_file);
+	
+	
+	hb->offset += offset;
 	hb->blk_length = 0;
 	free(valbuffer);
 	return 0;

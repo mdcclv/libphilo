@@ -3,6 +3,7 @@
 
 #include <gdbm.h>
 #include <stdio.h>
+#include <stdint.h>
 
 struct philo_dbspec
        {
@@ -16,6 +17,8 @@ struct philo_dbspec
            int *dependencies;
            int *bitlengths;
            int bitwidth;
+           int hits_per_block;
+           int uncompressed_hit_size;
        };
 
 typedef struct philo_dbspec dbspec;

@@ -167,6 +167,9 @@ dbspec *new_dbspec(int fields,
             dbs_ptr->bitwidth += bitlengths[i];
         }
             
+        dbs_ptr->hits_per_block = (dbs_ptr->block_size * 8) / dbs_ptr->bitwidth;
+        dbs_ptr->uncompressed_hit_size = sizeof(uint32_t) * dbs_ptr->fields;
+        
         return dbs_ptr;         
     }
 
