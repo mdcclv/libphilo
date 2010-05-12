@@ -246,28 +246,28 @@ int write_dir(hitbuffer *hb) {
 	//Compress..
 	compress(valbuffer,offset,bit_offset,hb->type,dbs->type_length);
 	offset += dbs->type_length / 8;
-	bit_offset += dbs->type_length;
+	bit_offset += dbs->type_length % 8;
 	
 	if (hb->type == 0) {
 		compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq1_length);
-		offset += dbs->freq1_length / 8;
+		offset += (bit_offset + dbs->freq1_length) / 8;
 		bit_offset = (bit_offset + dbs->freq1_length) % 8;
 	}
 
 	else if (hb->type == 1) {
 		compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq2_length);
-		offset += dbs->freq2_length / 8;
+		offset += (bit_offset + dbs->freq2_length) / 8;
 		bit_offset = (bit_offset + dbs->freq2_length) % 8;
 		
 		compress(valbuffer,offset,bit_offset,hb->offset,dbs->offset_length);
-		offset += dbs->offset_length / 8;
+		offset += (bit_offset + dbs->offset_length) / 8;
 		bit_offset = (bit_offset + dbs->offset_length) % 8;
 	}
 	
 	for (i = 0; i < hb->dir_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
 			compress(valbuffer,offset,bit_offset,hb->dir[i*dbs->fields + j] + dbs->negatives[j], dbs->bitlengths[j]);
-			offset += dbs->bitlengths[j] / 8;
+			offset += (bit_offset + dbs->bitlengths[j]) / 8;
 			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;
 		}
 	}
@@ -328,6 +328,7 @@ int compress(char *bytebuffer, int byte, int bit, Z32 data, int size) {
 	int free_space = 8 - bit;
 	int remaining = size;
 	int l_shift;
+	int mask;
 	int r_shift;
 	int to_do = 0;
 	int bits_done = 0;
@@ -339,11 +340,11 @@ int compress(char *bytebuffer, int byte, int bit, Z32 data, int size) {
 			bit = 0;
 		}
 		to_do = remaining >= free_space ? free_space : remaining;
-		l_shift = 32 - to_do;
+		mask = (1 << to_do) - 1;
 		r_shift = bits_done;
 		data >>= r_shift; //trim off what we've done already.
-		word = (data << l_shift) >> l_shift; //trim off the more significant bits
-		bytebuffer[byte] |= word << bit; // |= to avoid over/underflows, etc...
+		word &= mask; //mask out higher bits
+		bytebuffer[byte] |= (word << bit); // |= to avoid over/underflows, etc...
 		bits_done += to_do;
 		bit += to_do;
 		remaining -= to_do;

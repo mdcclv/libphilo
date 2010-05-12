@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
    		lu_blocks = 0;
    		sscanf(buffer,"%s256",word);
    		fprintf(stderr,"looking up %s : ",word);
-//   		word_lookup(db,word);
+ 		word_lookup(db,word);
 		hits = hit_lookup(db,word,&lu_type,&lu_freq,&lu_blocks,&lu_offset);
 		fprintf(stderr,"%d\n", lu_freq);
 		if (lu_type == 0) {
