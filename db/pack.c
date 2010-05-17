@@ -6,6 +6,7 @@
 
 //shouldn't be this much in main().  fix later.
 int main(int argc, char **argv) {
+	char testword = 0;
 	FILE *dbspecs4;
 	GDBM_FILE gdbh;
 	FILE *blocks;
@@ -23,11 +24,18 @@ int main(int argc, char **argv) {
 
 	//hack for pages
 	hit[8] = 0;
+
 //	fprintf(stderr, "%d arguments from command line.\n", argc);
 	if (argc < 2) {
 		exit(1);
 	}
 	
+/*	
+	fprintf(stderr, "initial sanity check.  compressing 1 into 1 bit...");
+	compress(&testword,0,0,1,1);
+	fprintf(stderr, "result: %d\n", testword);
+*/
+
 	//load dbspecs.
 	fprintf(stderr, "reading dbspecs in from %s...\n", argv[1]);
 	dbspecs4 = fopen(argv[1],"r");
@@ -146,7 +154,7 @@ int hitbuffer_finish(hitbuffer *hb) {
 		fprintf(stderr, "%s: %Ld\n", hb->word, hb->freq, hb->dir_length);
 		write_dir(hb);
 	}
-	else {
+	else if (hb->type == 1) {
 		fprintf(stderr, "%s: %Ld [%Ld blocks]\n", hb->word, hb->freq, hb->dir_length);
 		write_dir(hb);
 		write_blk(hb);
@@ -250,24 +258,24 @@ int write_dir(hitbuffer *hb) {
 	
 	if (hb->type == 0) {
 		compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq1_length);
-		offset += (bit_offset + dbs->freq1_length) / 8;
+		offset = (offset * 8 + bit_offset + dbs->freq1_length) / 8;
 		bit_offset = (bit_offset + dbs->freq1_length) % 8;
 	}
 
 	else if (hb->type == 1) {
 		compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq2_length);
-		offset += (bit_offset + dbs->freq2_length) / 8;
+		offset = (offset * 8 + bit_offset + dbs->freq2_length) / 8;
 		bit_offset = (bit_offset + dbs->freq2_length) % 8;
 		
 		compress(valbuffer,offset,bit_offset,hb->offset,dbs->offset_length);
-		offset += (bit_offset + dbs->offset_length) / 8;
+		offset = (offset * 8 + bit_offset + dbs->offset_length) / 8;
 		bit_offset = (bit_offset + dbs->offset_length) % 8;
 	}
 	
 	for (i = 0; i < hb->dir_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
 			compress(valbuffer,offset,bit_offset,hb->dir[i*dbs->fields + j] + dbs->negatives[j], dbs->bitlengths[j]);
-			offset += (bit_offset + dbs->bitlengths[j]) / 8;
+			offset = (offset * 8 + bit_offset + dbs->bitlengths[j]) / 8;
 			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;
 		}
 	}
@@ -327,28 +335,26 @@ int write_blk(hitbuffer *hb) {
 int compress(char *bytebuffer, int byte, int bit, Z32 data, int size) {
 	int free_space = 8 - bit;
 	int remaining = size;
-	int l_shift;
-	int mask;
-	int r_shift;
-	int to_do = 0;
-	int bits_done = 0;
-	char word;
+	char mask;
+	int r_shift = 0;
+	int to_do;
+
 	while (remaining > 0) {
 		if (free_space == 0) {
 			byte += 1;
 			free_space = 8;
-			bit = 0;
 		}
-		to_do = remaining >= free_space ? free_space : remaining;
-		mask = (1 << to_do) - 1;
-		r_shift = bits_done;
+
+		to_do = (remaining >= free_space) ? free_space : remaining;
+
 		data >>= r_shift; //trim off what we've done already.
-		word &= mask; //mask out higher bits
-		bytebuffer[byte] |= (word << bit); // |= to avoid over/underflows, etc...
-		bits_done += to_do;
-		bit += to_do;
+		mask = (1 << to_do) - 1; //   (1 << 3) - 1 = 00000111 get it? 
+		data &= mask; //mask out higher bits
+		bytebuffer[byte] |= (data << (8-free_space)); // |= to avoid over/underflows, etc...
+
 		remaining -= to_do;
 		free_space -= to_do;
+		r_shift = to_do;
 	}
 	return 0;	
 }
