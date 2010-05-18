@@ -245,29 +245,29 @@ int write_dir(hitbuffer *hb) {
 	}
 
 	//Compress..
-	compress(valbuffer,offset,bit_offset,hb->type,dbs->type_length);
+	compress(valbuffer,offset,bit_offset,(N64)hb->type,dbs->type_length);
 	offset += dbs->type_length / 8;
 	bit_offset += dbs->type_length % 8;
 	
 	if (hb->type == 0) {
-		compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq1_length);
+		compress(valbuffer,offset,bit_offset,(N64)hb->freq,dbs->freq1_length);
 		offset = (offset * 8 + bit_offset + dbs->freq1_length) / 8;
 		bit_offset = (bit_offset + dbs->freq1_length) % 8;
 	}
 
 	else if (hb->type == 1) {
-		compress(valbuffer,offset,bit_offset,hb->freq,dbs->freq2_length);
+		compress(valbuffer,offset,bit_offset,(N64)hb->freq,dbs->freq2_length);
 		offset = (offset * 8 + bit_offset + dbs->freq2_length) / 8;
 		bit_offset = (bit_offset + dbs->freq2_length) % 8;
 		
-		compress(valbuffer,offset,bit_offset,hb->offset,dbs->offset_length);
+		compress(valbuffer,offset,bit_offset,(N64)hb->offset,dbs->offset_length);
 		offset = (offset * 8 + bit_offset + dbs->offset_length) / 8;
 		bit_offset = (bit_offset + dbs->offset_length) % 8;
 	}
 	
 	for (i = 0; i < hb->dir_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
-			compress(valbuffer,offset,bit_offset,hb->dir[i*dbs->fields + j] + dbs->negatives[j], dbs->bitlengths[j]);
+			compress(valbuffer,offset,bit_offset,(N64)(hb->dir[i*dbs->fields + j] + dbs->negatives[j]), dbs->bitlengths[j]);
 			offset = (offset * 8 + bit_offset + dbs->bitlengths[j]) / 8;
 			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;
 		}
@@ -296,7 +296,7 @@ int write_blk(hitbuffer *hb) {
 	//Compress 
 	for (i = 0; i < hb->blk_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
-			compress(valbuffer,offset,bit_offset,hb->blk[i*dbs->fields + j] + dbs->negatives[j], dbs->bitlengths[j]);
+			compress(valbuffer,offset,bit_offset,(N64)(hb->blk[i*dbs->fields + j] + dbs->negatives[j]), dbs->bitlengths[j]);
 			offset += (bit_offset + dbs->bitlengths[j]) / 8;
 			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;			
 		}
@@ -305,7 +305,7 @@ int write_blk(hitbuffer *hb) {
 	//Don't forget the block-end flag iff a block ends prematurely.
 	if (hb->blk_length < dbs->hits_per_block) {
 		for (j = 0; j < dbs->fields; j++) {
-			compress(valbuffer,offset,bit_offset,(1LLU << dbs->bitlengths[j]) - 1, dbs->bitlengths[j]);
+			compress(valbuffer,offset,bit_offset,(N64)((1LLU << dbs->bitlengths[j]) - 1), dbs->bitlengths[j]);
 			offset += (bit_offset + dbs->bitlengths[j]) / 8;
 			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;	
 		}	
@@ -343,7 +343,7 @@ int compress(char *bytebuffer, int byte, int bit, N64 data, int size) {
 
 		data >>= r_shift; //trim off what we've done already.
 		mask = (1 << to_do) - 1; //this will mask out high bits.
-		bytebuffer[byte] |= ( (data & mask) << (8-free_space)); //mask then shift into place.
+		bytebuffer[byte] |= (char)( (data & mask) << (8-free_space)); //mask then shift into place.
 		
 		remaining -= to_do;
 		free_space -= to_do;
