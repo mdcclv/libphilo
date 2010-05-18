@@ -342,8 +342,8 @@ int compress(char *bytebuffer, int byte, int bit, N64 data, int size) {
 		to_do = (remaining >= free_space) ? free_space : remaining;
 
 		data >>= r_shift; //trim off what we've done already.
-		mask = (1LLU << to_do) - 1LLU; this will mask out high bits.
-		bytebuffer[byte] |= ( (data & mask) << (8LLU-free_space)); //mask then shift into place.
+		mask = (1 << to_do) - 1; //this will mask out high bits.
+		bytebuffer[byte] |= ( (data & mask) << (8-free_space)); //mask then shift into place.
 		
 		remaining -= to_do;
 		free_space -= to_do;
