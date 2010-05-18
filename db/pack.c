@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	fprintf(stderr, "done. %Ld hits packed in %Ld entries.\n", totalhits, uniq_words);
+	fprintf(stderr, "done. %d hits packed in %d entries.\n", (int)(totalhits), (int)(uniq_words));
 	return 0;
 }
 
@@ -114,7 +114,7 @@ int hitbuffer_init(hitbuffer *hb, Z8 *word) {
 }
 
 int hitbuffer_inc(hitbuffer *hb, Z32 *hit) {
-	hb->freq += 1;
+	hb->freq += 1LLU;
 	int result;
 	if (hb->freq < PHILO_INDEX_CUTOFF) {
 		add_to_dir(hb, hit, 1);
@@ -122,7 +122,7 @@ int hitbuffer_inc(hitbuffer *hb, Z32 *hit) {
 	}
 	else if (hb->freq == PHILO_INDEX_CUTOFF) {
 			result = add_to_block(hb,&(hb->dir[1*hb->db->dbspec->fields]),PHILO_INDEX_CUTOFF - 2);
-			hb->dir_length = 1;
+			hb->dir_length = 1LLU;
 			hb->type = 1;
 			result = add_to_block(hb,hit,1);
 //			fprintf(stderr, "clearing dir.  started new block for %s...\n", hb->word);
@@ -171,7 +171,7 @@ int add_to_dir(hitbuffer *hb, Z32 *data, N32 count) {
 		   data, //the data buffer
 	       count * (hb->db->dbspec->fields) * sizeof(Z32) //the size of the data buffer
 	      );
-	hb->dir_length += count;
+	hb->dir_length += (N64)(count);
 	return 0;
 }
 
@@ -342,8 +342,8 @@ int compress(char *bytebuffer, int byte, int bit, N64 data, int size) {
 		to_do = (remaining >= free_space) ? free_space : remaining;
 
 		data >>= r_shift; //trim off what we've done already.
-		mask = (1 << to_do) - 1; //   (1 << 3) - 1 = 00000111 get it? this will mask out high bits.
-		bytebuffer[byte] |= ( (data & mask) << (8-free_space)); //mask then shift into place.
+		mask = (1LLU << to_do) - 1LLU; this will mask out high bits.
+		bytebuffer[byte] |= ( (data & mask) << (8LLU-free_space)); //mask then shift into place.
 		
 		remaining -= to_do;
 		free_space -= to_do;
