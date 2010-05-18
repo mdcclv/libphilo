@@ -88,10 +88,10 @@ int main(int argc, char **argv) {
 			if ((strcmp(word,hb->word))) {				
 				hitbuffer_finish(hb);
 				hitbuffer_init(hb, word);
-				uniq_words += 1;
+				uniq_words += 1LLU;
 			}
 			hitbuffer_inc(hb, hit);
-			totalhits += 1;
+			totalhits += 1LLU;
 		}
 		else {
 			fprintf(stderr, "Couldn't understand hit.\n");
@@ -155,7 +155,7 @@ int hitbuffer_finish(hitbuffer *hb) {
 	return 0;
 }
 
-int add_to_dir(hitbuffer *hb, Z32 *data, N64 count) {
+int add_to_dir(hitbuffer *hb, Z32 *data, N32 count) {
 	void *status;
 	while (hb->dir_malloced < ((hb->dir_length + count) * (hb->db->dbspec->fields) * sizeof(Z32)) ) {
 		hb->dir = realloc(hb->dir, 2 * hb->dir_malloced);
@@ -175,7 +175,7 @@ int add_to_dir(hitbuffer *hb, Z32 *data, N64 count) {
 	return 0;
 }
 
-int add_to_block(hitbuffer *hb, Z32 *data, N64 count) {
+int add_to_block(hitbuffer *hb, Z32 *data, N32 count) {
 	N64 maxsize = 0;
 	N64 remaining = count;
 	int i,j;
@@ -305,8 +305,8 @@ int write_blk(hitbuffer *hb) {
 	//Don't forget the block-end flag iff a block ends prematurely.
 	if (hb->blk_length < dbs->hits_per_block) {
 		for (j = 0; j < dbs->fields; j++) {
-			compress(valbuffer,offset,bit_offset,(1 << dbs->bitlengths[j]) - 1, dbs->bitlengths[j]);
-			offset += dbs->bitlengths[j] / 8;
+			compress(valbuffer,offset,bit_offset,(1LLU << dbs->bitlengths[j]) - 1, dbs->bitlengths[j]);
+			offset += (bit_offset + dbs->bitlengths[j]) / 8;
 			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;	
 		}	
 	}
@@ -314,6 +314,7 @@ int write_blk(hitbuffer *hb) {
 	if (bit_offset) {
 		offset = offset + 1; //iff we have a bit offset; blocks are byte-aligned.
 	}
+	
 	if (hb->blk_length < dbs->hits_per_block) {
 		write_size = offset;
 	}
@@ -325,13 +326,12 @@ int write_blk(hitbuffer *hb) {
 	return 0;
 }
 
-int compress(char *bytebuffer, int byte, int bit, Z32 data, int size) {
+int compress(char *bytebuffer, int byte, int bit, N64 data, int size) {
 	int free_space = 8 - bit;
 	int remaining = size;
 	char mask;
 	int r_shift = 0;
 	int to_do;
-	char word;
 	
 	while (remaining > 0) {
 		if (free_space == 0) {
@@ -343,7 +343,6 @@ int compress(char *bytebuffer, int byte, int bit, Z32 data, int size) {
 
 		data >>= r_shift; //trim off what we've done already.
 		mask = (1 << to_do) - 1; //   (1 << 3) - 1 = 00000111 get it? this will mask out high bits.
-//		word = data & mask; //mask out higher bits. tricky conversion.
 		bytebuffer[byte] |= ( (data & mask) << (8-free_space)); //mask then shift into place.
 		
 		remaining -= to_do;

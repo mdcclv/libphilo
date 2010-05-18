@@ -6,7 +6,10 @@ CPPFLAGS=
 LDFLAGS= 
 PH_LDMODULEFLAGS=-shared
 PH_FPIC=-fPIC
-all: unpack.o db.o bitsvector.o pack
+all: unpack.o db.o bitsvector.o pack parsedb
+
+parsedb: parsedb.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o parsedb parsedb.c db.c unpack.c bitsvector.c -lgdbm
 
 pack: pack.c db.c 
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o pack pack.c db.c -lgdbm
