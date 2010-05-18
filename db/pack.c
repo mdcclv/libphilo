@@ -25,16 +25,9 @@ int main(int argc, char **argv) {
 	//hack for pages
 	hit[8] = 0;
 
-//	fprintf(stderr, "%d arguments from command line.\n", argc);
 	if (argc < 2) {
 		exit(1);
 	}
-	
-/*	
-	fprintf(stderr, "initial sanity check.  compressing 1 into 1 bit...");
-	compress(&testword,0,0,1,1);
-	fprintf(stderr, "result: %d\n", testword);
-*/
 
 	//load dbspecs.
 	fprintf(stderr, "reading dbspecs in from %s...\n", argv[1]);
@@ -128,10 +121,10 @@ int hitbuffer_inc(hitbuffer *hb, Z32 *hit) {
 //		fprintf(stderr, "added hit for %s...\n", hb->word);
 	}
 	else if (hb->freq == PHILO_INDEX_CUTOFF) {
-			result = add_to_block(hb,hb->dir,PHILO_INDEX_CUTOFF - 1);
-			hb->dir_length = 0;
+			result = add_to_block(hb,&(hb->dir[1*hb->db->dbspec->fields]),PHILO_INDEX_CUTOFF - 2);
+			hb->dir_length = 1;
 			hb->type = 1;
-			result = add_to_dir(hb,hit,1);
+			result = add_to_block(hb,hit,1);
 //			fprintf(stderr, "clearing dir.  started new block for %s...\n", hb->word);
 	}
 	if (hb->freq > PHILO_INDEX_CUTOFF) {
@@ -199,17 +192,17 @@ int add_to_block(hitbuffer *hb, Z32 *data, N64 count) {
 		//if (remaining < hits_to_copy) {hits_to_copy = remaining;}
 
 
-/*		memmove(&hb->blk[hb->blk_length * (hb->db->dbspec->fields)] ,
+		memmove(&hb->blk[hb->blk_length * (hb->db->dbspec->fields)] ,
 			   data,
 			   count * hb->db->dbspec->fields * sizeof(Z32)
 			  );
-*/
-		for (i = 0; i < count; i++) {
+
+/*		for (i = 0; i < count; i++) {
 			for (j = 0; j < hb->db->dbspec->fields; j++) {
 				hb->blk[((hb->blk_length + i)*hb->db->dbspec->fields) + j] = data[(i*hb->db->dbspec->fields) + j];
 			}
 		}
-
+*/
 		hb->blk_length += count;
 		//remaining -= hits_to_copy; 
 		return 0; //should probably return how many hits were packed.
@@ -236,7 +229,7 @@ int write_dir(hitbuffer *hb) {
 	const dbspec *dbs = hb->db->dbspec;
 	char *valbuffer;
 	
-	if (hb->type = 0) {
+	if (hb->type == 0) {
 		header_size = dbs->type_length + dbs->freq1_length;
 	}
 	else {
@@ -299,14 +292,16 @@ int write_blk(hitbuffer *hb) {
 	int write_size = dbs->block_size;
 //	fprintf(stderr, "writing %Ld hits.\n", hb->blk_length);
 	char *valbuffer = calloc(hb->db->dbspec->block_size, sizeof(char));
+
 	//Compress 
 	for (i = 0; i < hb->blk_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
 			compress(valbuffer,offset,bit_offset,hb->blk[i*dbs->fields + j] + dbs->negatives[j], dbs->bitlengths[j]);
-			offset += dbs->bitlengths[j] / 8;
+			offset += (bit_offset + dbs->bitlengths[j]) / 8;
 			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;			
 		}
 	}
+
 	//Don't forget the block-end flag iff a block ends prematurely.
 	if (hb->blk_length < dbs->hits_per_block) {
 		for (j = 0; j < dbs->fields; j++) {
@@ -325,8 +320,6 @@ int write_blk(hitbuffer *hb) {
 	
 	fwrite(valbuffer,sizeof(char),write_size,hb->db->block_file);
 	
-	
-	hb->offset += offset;
 	hb->blk_length = 0;
 	free(valbuffer);
 	return 0;
@@ -338,7 +331,8 @@ int compress(char *bytebuffer, int byte, int bit, Z32 data, int size) {
 	char mask;
 	int r_shift = 0;
 	int to_do;
-
+	char word;
+	
 	while (remaining > 0) {
 		if (free_space == 0) {
 			byte += 1;
@@ -348,10 +342,10 @@ int compress(char *bytebuffer, int byte, int bit, Z32 data, int size) {
 		to_do = (remaining >= free_space) ? free_space : remaining;
 
 		data >>= r_shift; //trim off what we've done already.
-		mask = (1 << to_do) - 1; //   (1 << 3) - 1 = 00000111 get it? 
-		data &= mask; //mask out higher bits
-		bytebuffer[byte] |= (data << (8-free_space)); // |= to avoid over/underflows, etc...
-
+		mask = (1 << to_do) - 1; //   (1 << 3) - 1 = 00000111 get it? this will mask out high bits.
+//		word = data & mask; //mask out higher bits. tricky conversion.
+		bytebuffer[byte] |= ( (data & mask) << (8-free_space)); //mask then shift into place.
+		
 		remaining -= to_do;
 		free_space -= to_do;
 		r_shift = to_do;
