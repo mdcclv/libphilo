@@ -118,13 +118,16 @@ int hitbuffer_init(hitbuffer *hb, Z8 *word) {
 }
 
 int hitbuffer_inc(hitbuffer *hb, Z32 *hit) {
-	hb->freq += 1LLU;
+	hb->freq += 1LLU; //LLU for 64-bit.  OSX 10.5 is VERY finicky about this.
 	int result;
 	if (hb->freq < PHILO_INDEX_CUTOFF) {
 		add_to_dir(hb, hit, 1);
 //		fprintf(stderr, "added hit for %s...\n", hb->word);
 	}
 	else if (hb->freq == PHILO_INDEX_CUTOFF) {
+			//when the frequency reaches 10, we start using a block-header layout.
+			//each "hit" in the directory corresponds to a large, compressed disk block.
+			//by comparing the directory headers to the query, the search engine skips blocks if possible.
 			result = add_to_block(hb,&(hb->dir[1*hb->db->dbspec->fields]),PHILO_INDEX_CUTOFF - 2);
 			hb->dir_length = 1LLU;
 			hb->type = 1;
@@ -135,8 +138,8 @@ int hitbuffer_inc(hitbuffer *hb, Z32 *hit) {
 		result = add_to_block(hb,hit,1);
 		if (result == PHILO_BLOCK_FULL) {
 			// IF the block add failed,
-			write_blk(hb);
-			add_to_dir(hb,hit,1);
+			write_blk(hb); //write the full block out, start a new one,
+			add_to_dir(hb,hit,1); //then push the current hit onto the directory.
 //			fprintf(stderr, "started new block for %s...\n", hb->word);
 		}
 	}		
@@ -180,41 +183,27 @@ int add_to_dir(hitbuffer *hb, Z32 *data, N32 count) {
 }
 
 int add_to_block(hitbuffer *hb, Z32 *data, N32 count) {
-	N64 maxsize = 0;
-	N64 remaining = count;
+	//a block has a fixed size in bytes, but that applies AFTER compression.
+	//I calculate the number of hits per block, based on hit width and block size,
+	//when I parse the dbspecs.  
+	
 	int i,j;
-	//N64 hits_to_copy = 0;
-
-	// we need to see if the block needs to be written; 
-	// for that, we need to calculate the maximum number of hits per block,
-	// AFTER compression.
-
+	
 	N64 hits_per_block = (hb->db->dbspec->block_size * 8)  / (hb->db->dbspec->bitwidth);
 	N64 free_space = hits_per_block - hb->blk_length;
 
 	if (count <= free_space ) { //
-		//if (remaining < hits_to_copy) {hits_to_copy = remaining;}
-
-
+		//if there's room, copy the hits over.
 		memmove(&hb->blk[hb->blk_length * (hb->db->dbspec->fields)] ,
 			   data,
 			   count * hb->db->dbspec->fields * sizeof(Z32)
 			  );
 
-/*		for (i = 0; i < count; i++) {
-			for (j = 0; j < hb->db->dbspec->fields; j++) {
-				hb->blk[((hb->blk_length + i)*hb->db->dbspec->fields) + j] = data[(i*hb->db->dbspec->fields) + j];
-			}
-		}
-*/
 		hb->blk_length += count;
-		//remaining -= hits_to_copy; 
-		return 0; //should probably return how many hits were packed.
+		return 0; 
 	}
 	else {
 		//the block is full, or full enough.
-		//should revisit this later.
-		//as it is, writing multiple hits won't work well.
 		return PHILO_BLOCK_FULL;
 	}
 }
@@ -248,31 +237,34 @@ int write_dir(hitbuffer *hb) {
 		exit(1);
 	}
 
-	//Compress..
+	//Compress..we'll see this idiom a lot.  arguably I should just take a bit offset for simplicity.
 	compress(valbuffer,offset,bit_offset,(N64)hb->type,dbs->type_length);
 	offset += dbs->type_length / 8;
 	bit_offset += dbs->type_length % 8;
 	
+	//Low frequency words just have frequency in the header
 	if (hb->type == 0) {
 		compress(valbuffer,offset,bit_offset,(N64)hb->freq,dbs->freq1_length);
-		offset = (offset * 8 + bit_offset + dbs->freq1_length) / 8;
+		offset += (bit_offset + dbs->freq1_length) / 8;
 		bit_offset = (bit_offset + dbs->freq1_length) % 8;
 	}
 
+	//High frequency words have byte offset of the block tree as well.
 	else if (hb->type == 1) {
 		compress(valbuffer,offset,bit_offset,(N64)hb->freq,dbs->freq2_length);
-		offset = (offset * 8 + bit_offset + dbs->freq2_length) / 8;
+		offset += (bit_offset + dbs->freq2_length) / 8;
 		bit_offset = (bit_offset + dbs->freq2_length) % 8;
 		
 		compress(valbuffer,offset,bit_offset,(N64)hb->offset,dbs->offset_length);
-		offset = (offset * 8 + bit_offset + dbs->offset_length) / 8;
+		offset += (bit_offset + dbs->offset_length) / 8;
 		bit_offset = (bit_offset + dbs->offset_length) % 8;
 	}
 	
+	//write the hits themselves.
 	for (i = 0; i < hb->dir_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
 			compress(valbuffer,offset,bit_offset,(N64)(hb->dir[i*dbs->fields + j] + dbs->negatives[j]), dbs->bitlengths[j]);
-			offset = (offset * 8 + bit_offset + dbs->bitlengths[j]) / 8;
+			offset += (bit_offset + dbs->bitlengths[j]) / 8;
 			bit_offset = (bit_offset + dbs->bitlengths[j]) % 8;
 		}
 	}
@@ -284,6 +276,7 @@ int write_dir(hitbuffer *hb) {
 	value.dptr = valbuffer;
 	value.dsize = buffer_size;
 	gdbm_store(hb->db->hash_file, key, value,GDBM_REPLACE);
+
 	free(valbuffer);
 	return 0;
 }
@@ -293,8 +286,7 @@ int write_blk(hitbuffer *hb) {
 	int bit_offset = 0;
 	int i,j;
 	dbspec *dbs = hb->db->dbspec;
-	int write_size = dbs->block_size;
-//	fprintf(stderr, "writing %Ld hits.\n", hb->blk_length);
+	int write_size;
 	char *valbuffer = calloc(hb->db->dbspec->block_size, sizeof(char));
 
 	//Compress 
@@ -316,13 +308,13 @@ int write_blk(hitbuffer *hb) {
 	}
 
 	if (bit_offset) {
-		offset = offset + 1; //iff we have a bit offset; blocks are byte-aligned.
+		offset = offset + 1; //iff we have a bit offset; blocks are byte-aligned, of course.
 	}
-	
+
+	write_size = dbs->block_size;
 	if (hb->blk_length < dbs->hits_per_block) {
-		write_size = offset;
+		write_size = offset; //this actually saves a lot of space in a large database.
 	}
-	
 	fwrite(valbuffer,sizeof(char),write_size,hb->db->block_file);
 	
 	hb->blk_length = 0;
@@ -331,22 +323,24 @@ int write_blk(hitbuffer *hb) {
 }
 
 int compress(char *bytebuffer, int byte, int bit, N64 data, int size) {
+// ALWAYS remember to cast 'data' when you CALL compress().  
+// the default conversion of int to uint64 is very bad.
 	int free_space = 8 - bit;
 	int remaining = size;
 	char mask;
-	int r_shift = 0;
-	int to_do;
+	int r_shift = 0; // we keep shifting data to the right as we write bits out.
+	int to_do; // the number of bits to write in each pass.
 	
-	while (remaining > 0) {
-		if (free_space == 0) {
-			byte += 1;
+	while (remaining > 0) { // as long as we still have bits to write
+		if (free_space == 0) { // if there are no bits left in the current word
+			byte += 1;		   // move on to the next one.
 			free_space = 8;
 		}
 
 		to_do = (remaining >= free_space) ? free_space : remaining;
 
 		data >>= r_shift; //trim off what we've done already.
-		mask = (1 << to_do) - 1; //this will mask out high bits.
+		mask = (1 << to_do) - 1; //this will mask out high bits, leaving only 'to_do' low order bits.
 		bytebuffer[byte] |= (char)( (data & mask) << (8-free_space)); //mask, then shift into place.
 		
 		remaining -= to_do;
