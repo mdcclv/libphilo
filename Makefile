@@ -10,7 +10,7 @@ PH_LDSEARCHFLAGS =
 
 all: 	search4	libphilo.dylib db/pack
 
-db/pack: db/pack.c db/pack.h db/db.o
+db/pack: db/pack.c db/pack.h db/db.c db/db.h
 	(cd db; make pack)
 
 search4: search4.c search.o retreive.o gmap.o word.o blockmap.o level.o out.o log.o plugin/libindex.a db/db.o db/bitsvector.o db/unpack.o
