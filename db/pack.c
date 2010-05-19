@@ -4,8 +4,9 @@
 #include <string.h>
 #include <math.h>
 
-//shouldn't be this much in main().  fix later.
 int main(int argc, char **argv) {
+// main() should probably be in a separate file, and pack.c should get linked into libphilo.  
+
 	char testword = 0;
 	FILE *dbspecs4;
 	dbspec *dbs = NULL;
@@ -103,11 +104,11 @@ hitbuffer *new_hb(dbspec *dbs) {
 	hb->db->dbspec = dbs;
 	strcpy(hb->word, "");
 
-	// the dir can grow later.
+	// the dir can grow dynamically.  start it small.
 	hb->dir = malloc(hb->db->dbspec->block_size);
 	hb->dir_malloced = hb->db->dbspec->block_size;
 
-	// the block should not grow, since it has a fixed upper size.
+	// the block should not grow, since it has a fixed upper size, which we can calculate.
 	hb->blk = malloc(hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block); 
 	hb->blk_malloced = hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block;
 
