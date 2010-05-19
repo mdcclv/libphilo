@@ -129,9 +129,14 @@ int hitbuffer_inc(hitbuffer *hb, Z32 *hit) {
 	}
 	else if (hb->freq == PHILO_INDEX_CUTOFF) {
 			//when the frequency reaches 10, we start using a block-header layout.
-			//each "hit" in the directory corresponds to a large, compressed disk block.
+			//each "hit" in the directory corresponds to a large, compressed block of hits.
 			//by comparing the directory headers to the query, the search engine skips blocks if possible.
+
 			result = add_to_block(hb,&(hb->dir[1*hb->db->dbspec->fields]),PHILO_INDEX_CUTOFF - 2);
+			if (result == PHILO_BLOCK_FULL) {
+				fprintf(stderr, "you can't fit PHILO_INDEX_CUTOFF hits into a block!  adjust your block size, or your index cutoff.\n");	
+			}
+
 			hb->dir_length = 1LLU;
 			hb->type = 1;
 			result = add_to_block(hb,hit,1);
@@ -154,11 +159,11 @@ int hitbuffer_finish(hitbuffer *hb) {
 		return 0;
 	}
 	if (hb->type == 0) {	
-		fprintf(stderr, "%s: %Ld\n", hb->word, hb->freq, hb->dir_length);
+		fprintf(stderr, "%s: %Ld\n", hb->word, (int)hb->freq);
 		write_dir(hb);
 	}
 	else if (hb->type == 1) {
-		fprintf(stderr, "%s: %Ld [%Ld blocks]\n", hb->word, hb->freq, hb->dir_length);
+		fprintf(stderr, "%s: %d [%d blocks]\n", hb->word, (int)hb->freq, (int)hb->dir_length);
 		write_dir(hb);
 		write_blk(hb);
 	}
@@ -166,6 +171,8 @@ int hitbuffer_finish(hitbuffer *hb) {
 }
 
 int add_to_dir(hitbuffer *hb, Z32 *data, N32 count) {
+	//there is no fixed upper limit to directory size, so the dir structure has to grow dynamically.
+	//this doesn't happend for each hit.  the dir object isn't freed until the program terminates.
 	void *status;
 	while (hb->dir_malloced < ((hb->dir_length + count) * (hb->db->dbspec->fields) * sizeof(Z32)) ) {
 		hb->dir = realloc(hb->dir, 2 * hb->dir_malloced);
@@ -263,7 +270,7 @@ int write_dir(hitbuffer *hb) {
 		bit_offset = (bit_offset + dbs->offset_length) % 8;
 	}
 	
-	//write the hits themselves.
+	//compress the hits themselves.
 	for (i = 0; i < hb->dir_length; i++) {
 		for (j = 0; j < dbs->fields; j++) {
 			compress(valbuffer,offset,bit_offset,(N64)(hb->dir[i*dbs->fields + j] + dbs->negatives[j]), dbs->bitlengths[j]);
@@ -344,7 +351,7 @@ int compress(char *bytebuffer, int byte, int bit, N64 data, int size) {
 
 		data >>= r_shift; //trim off what we've done already.
 		mask = (1 << to_do) - 1; //this will mask out high bits, leaving only 'to_do' low order bits.
-		bytebuffer[byte] |= (char)( (data & mask) << (8-free_space)); //mask, then shift into place.
+		bytebuffer[byte] |= ((char)data & mask) << (8-free_space); //mask, then shift into place.
 		
 		remaining -= to_do;
 		free_space -= to_do;
