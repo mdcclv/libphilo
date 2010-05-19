@@ -4,6 +4,7 @@
 
 #define PHILO_INDEX_CUTOFF 10
 #define PHILO_BLOCK_FULL 1
+
 struct hitbuffer {
   dbh *db;
   Z32 *dir;

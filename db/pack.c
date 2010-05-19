@@ -62,16 +62,19 @@ int main(int argc, char **argv) {
 	
 	//ugly...
 	hb = malloc(sizeof(hitbuffer));
-
 	hb->db = malloc(sizeof(dbh));
+
 	hb->db->hash_file = gdbh;
 	hb->db->block_file = blocks;
 	hb->db->dbspec = dbs;
 	strcpy(hb->word, "");
 
+	// the dir can grow later.
 	hb->dir = malloc(hb->db->dbspec->block_size);
 	hb->dir_malloced = hb->db->dbspec->block_size;
-	hb->blk = malloc(hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block); // this is VERY conservative, but I should probably fix it.  
+
+	// the block should not grow, since it has a fixed upper size.
+	hb->blk = malloc(hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block); 
 	hb->blk_malloced = hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block;
 
 	hb->offset = 0;
