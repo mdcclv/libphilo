@@ -18,4 +18,4 @@ validate-index: validate-index.c unpack.o bitsvector.o getresource.o
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o validate-index validate-index.c unpack.o bitsvector.o getresource.o -lgdbm
 
 clean: 
-	rm -f *.o *.lo libunpack_e.bundle *~ validate-index
+	rm -f *.o *.lo libunpack_e.bundle *~ validate-index pack
