@@ -21,3 +21,9 @@ struct hitbuffer {
 };
 
 typedef struct hitbuffer hitbuffer;
+
+hitbuffer *new_hb(dbspec *dbs);
+int delete_hb(hitbuffer *hb);
+int hitbuffer_init(hitbuffer *hb, Z8 *word);
+int hitbuffer_inc(hitbuffer *hb, Z32 *hit);
+int hitbuffer_finish(hitbuffer *hb);

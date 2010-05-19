@@ -8,8 +8,6 @@
 int main(int argc, char **argv) {
 	char testword = 0;
 	FILE *dbspecs4;
-	GDBM_FILE gdbh;
-	FILE *blocks;
 	dbspec *dbs = NULL;
 	hitbuffer *hb = NULL;
 
@@ -28,10 +26,6 @@ int main(int argc, char **argv) {
 	if (argc < 2) {
 		exit(1);
 	}
-
-	//here we have to create the database object by hand.  Why?
-	//because we want it open for writing.  new_dbh() opens for reading only.
-	//there's probably a better solution.  a r/w flag in new_dbh or something.
 	
 	//load dbspecs.
 	fprintf(stderr, "reading dbspecs in from %s...\n", argv[1]);
@@ -45,6 +39,46 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "couldn't understand %s.\n", argv[1]);
 		exit(1);
 	}
+	
+	//create the hitbuffer object.
+	hb = new_hb(dbs);
+
+	//scanning
+	while(1) {
+		if (fgets(line,511,stdin) == NULL) {
+			hitbuffer_finish(hb);
+			break;		
+		}
+		state = sscanf(line,
+		               "%s %d %d %d %d %d %d %d %d %s\n", 
+		               word, &hit[0],&hit[1],&hit[2],&hit[3],&hit[4],&hit[5],&hit[6],&hit[7], page
+					  );
+
+		if (state == 10) {
+			if ((strcmp(word,hb->word))) {
+			//if we have a new word...
+				hitbuffer_finish(hb); // write out the current buffer.
+				hitbuffer_init(hb, word); // and reinitialize
+				uniq_words += 1LLU; //LLU for a 64-bit unsigned int.
+			}
+			hitbuffer_inc(hb, hit); //then add the hit to whichever word you're on.
+			totalhits += 1LLU;
+		}
+		else {
+			fprintf(stderr, "Couldn't understand hit.\n");
+		}
+	}
+
+	fprintf(stderr, "done. %d hits packed in %d entries.\n", (int)(totalhits), (int)(uniq_words));
+	delete_hb(hb);
+	delete_dbspec(dbs);
+	return 0;
+}
+
+hitbuffer *new_hb(dbspec *dbs) {
+	GDBM_FILE gdbh;
+	FILE *blocks;
+	hitbuffer *hb = NULL;
 	
 	//initialize gdbm.
 	gdbh = gdbm_open("index",0,GDBM_NEWDB, 0666,0);
@@ -78,34 +112,17 @@ int main(int argc, char **argv) {
 	hb->blk_malloced = hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block;
 
 	hb->offset = 0;
-	//all this should go in a subroutine.  new_hitbuffer(db) or something.
 
-	//scanning
-	while(1) {
-		if (fgets(line,511,stdin) == NULL) {
-			hitbuffer_finish(hb);
-			break;		
-		}
-		state = sscanf(line,
-		               "%s %d %d %d %d %d %d %d %d %s\n", 
-		               word, &hit[0],&hit[1],&hit[2],&hit[3],&hit[4],&hit[5],&hit[6],&hit[7], page
-					  );
+	return hb;
+}
 
-		if (state == 10) {
-			if ((strcmp(word,hb->word))) {				
-				hitbuffer_finish(hb);
-				hitbuffer_init(hb, word);
-				uniq_words += 1LLU;
-			}
-			hitbuffer_inc(hb, hit);
-			totalhits += 1LLU;
-		}
-		else {
-			fprintf(stderr, "Couldn't understand hit.\n");
-		}
-	}
-
-	fprintf(stderr, "done. %d hits packed in %d entries.\n", (int)(totalhits), (int)(uniq_words));
+int delete_hb(hitbuffer *hb) {
+	free(hb->dir);
+	free(hb->blk);
+	gdbm_close(hb->db->hash_file);
+	fclose(hb->db->block_file);
+	free(hb->db);
+	free(hb);
 	return 0;
 }
 
@@ -159,7 +176,7 @@ int hitbuffer_finish(hitbuffer *hb) {
 		return 0;
 	}
 	if (hb->type == 0) {	
-		fprintf(stderr, "%s: %Ld\n", hb->word, (int)hb->freq);
+		fprintf(stderr, "%s: %d\n", hb->word, (int)hb->freq);
 		write_dir(hb);
 	}
 	else if (hb->type == 1) {
