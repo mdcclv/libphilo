@@ -29,6 +29,10 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
+	//here we have to create the database object by hand.  Why?
+	//because we want it open for writing.  new_dbh() opens for reading only.
+	//there's probably a better solution.  a r/w flag in new_dbh or something.
+	
 	//load dbspecs.
 	fprintf(stderr, "reading dbspecs in from %s...\n", argv[1]);
 	dbspecs4 = fopen(argv[1],"r");
@@ -71,7 +75,7 @@ int main(int argc, char **argv) {
 	hb->blk_malloced = hb->db->dbspec->uncompressed_hit_size * hb->db->dbspec->hits_per_block;
 
 	hb->offset = 0;
-	//all this should go in a subroutine.
+	//all this should go in a subroutine.  new_hitbuffer(db) or something.
 
 	//scanning
 	while(1) {
