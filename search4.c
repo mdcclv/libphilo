@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 
 	int ascii_set = 0;
 	int corpussize = 1;
-	char *corpusfile[256];
+	char corpusfile[256];
 	int corpusfile_set = 0;
 	int debug = 0;
 	int limit = 0;
@@ -54,13 +54,23 @@ int main(int argc, char **argv) {
 			case 'a':
 				ascii_set = 1;
 				break;
-		        case 'l':
-			  limit = atol(optarg);
-			        break;
+			case 'l':
+				limit = atol(optarg);
+				break;
+			case 'c':
+				corpussize = atoi(optarg);
+				break;
+			case 'f':
+				strncpy(corpusfile,optarg,255);
+				corpusfile_set = 1;				
 			default:
-				break;		
+				break;
 		}
 		fprintf(stderr,"\n");
+	}
+	
+	if (!corpusfile_set) {
+		corpussize = 0;
 	}
 	
 	while (optind < argc) {
@@ -96,7 +106,7 @@ int main(int argc, char **argv) {
 	  temp_search_arg = malloc(sizeof(Z8 *) * strlen(search_arg));
 	  strncpy(temp_search_arg,search_arg,256);
 	}
-	s = new_search(db, method, temp_search_arg, ascii_set,limit,0,NULL);
+	s = new_search(db, method, temp_search_arg, ascii_set,limit,corpussize,corpusfile);
 	status = process_input ( s, stdin );
 	if ( status == BATCH_EMPTY ) {
 		fprintf(stderr,"no hits found.\n");
