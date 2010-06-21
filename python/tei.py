@@ -7,7 +7,6 @@ import codecs
 import math
 from OHCOVector import *
 
-
 # First we need to get our outputs taking utf8.  Very Important!
 sys.stdout = codecs.getwriter("utf-8")(sys.stdout) 
 sys.stderr = codecs.getwriter("utf-8")(sys.stderr)
@@ -29,8 +28,8 @@ mapping = {"TEI":"doc",
 	   "stage":"para"}
 
 metamap = { "titleStmt/author" => "author",
-			"titleStmt/title" => "title" }
-
+			"titleStmt/title" => "title",
+			"div/head" => "head"}
 parallel = {"line":0,
 	    "byte":0}
 
@@ -38,7 +37,6 @@ sortkeys = "-k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n -k 6,6n -k 7,7n -k 8,8n"
 blocksize = 2048
 index_cutoff = 10
 print objects
-
 
 #next, we start to build up the handlers that will accept expat events.
 def tagstart(name,attributes): # I should really wrap this in a class to hold state.
@@ -52,14 +50,14 @@ def tagstart(name,attributes): # I should really wrap this in a class to hold st
 		for k,v in attributes.iteritems():
 			attlist += " %s=\"%s\"" % (k,v) 
 		print >> o, type + " " + "<" + name + attlist + "> " + \
-		      " ".join(map(str,objects.v)) + " " + str(parallel["line"]) + \
-		      " " + str(parallel["byte"])
+		      " ".join(map(str,objects.v)) + " " + str(parallel["byte"]) + \
+		      " " + str(parallel["line"])
 	if name == "l":
 		if "n" in attributes.keys():
 			parallel["line"] = int(attributes["n"])
 		else:
 			parallel["line"] += 1
-		print >> o, "line %d %d" % (parallel["line"], parallel["byte"])
+		print >> o, "line %d %d" % (parallel["byte"],parallel["line"])
 
 
 def tagend(name):
@@ -70,7 +68,7 @@ def tagend(name):
 		#print "found %s, pulling from %s" % (name, type)
 		objects.pull(type)
 		print >> o, type + " " + "</" + name + ">" + " ".join(map(str,objects.v)) + \
-		      " " + str(parallel["line"]) + " " + str(parallel["byte"])
+		       " " + str(parallel["byte"]) + " " + str(parallel["line"])
 	
 
 def tokenizer(text):
@@ -87,13 +85,13 @@ def tokenizer(text):
 			char_offset = token.start(1)
 			byte_length = len(text[:char_offset].encode("UTF-8"))
 			print >> o, "word " + token.group(1) + " " + " ".join(map(str,objects.v)) \
-			      + " " + str(parallel["line"]) + " " + str(offset + byte_length) 
+			      + " " + str(offset + byte_length) + " " + str(parallel["line"])
 		if token.group(2):
 			objects.push("sent")
 			char_offset = token.start(1)
 			byte_length = len(text[:char_offset].encode("UTF-8"))
 			print >> o, "sent " + token.group(2) + " " + " ".join(map(str,objects.v)) \
-			      + " " + str(parallel["line"]) + " " + str(offset + byte_length)
+			       + " " + str(offset + byte_length) + " " + str(parallel["line"])
 
 
 def default(data):
