@@ -86,7 +86,9 @@ int set_corpus( Search s, Z8 *corpuspath, Z8 *corpusarg){
 	Z32 *buffer;
 	Z32 corpussize = (Z32)(corpusarg);
 	stat(corpuspath, &corpusstat);
-	
+	if (corpusstat.st_size == 0) {
+		return 0;
+	}
 	s->map = new_Gmap ( corpusstat.st_size/(sizeof(Z32)*corpussize), corpussize );
 	
 	if ( ( s->map->gm_l = hit_crp_args ( s->hit_def, s->map->gm_h, &s->map->gm_f, corpussize, corpuspath ) ) <= 0 ) {
@@ -141,7 +143,7 @@ Z32 produce_hits ( Search s, N32 level, Gmap map, Gmap res )
 {
   Z32 code_retreive;
 
-  s_log ( s->debug, L_INFO, NULL, "attempting to retreive hits..." ); 
+  s_log ( s->debug, L_INFO, NULL, "attempting to retreive hits..." );
 
   code_retreive = retreive_hits ( s, level, map, res );
 
@@ -179,9 +181,9 @@ Z32 produce_hits ( Search s, N32 level, Gmap map, Gmap res )
 
   s_log ( s->debug, L_INFO, NULL, "produce_hits: hits produced; returning.");
 
-  return SEARCH_PASS_OK; 
+  return SEARCH_PASS_OK;
 
-} 
+}
 
 Gmap map_store_tail ( Search s, N32 level, Gmap r )
 {
