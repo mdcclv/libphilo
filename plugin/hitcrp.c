@@ -36,6 +36,28 @@ extern Z32 h2h_cmp_cooc(Z32 *, Z32 *, hitdef *, Z32);
 extern Z32 m2m_cmp_cooc(Z32 *, Z32 *, hitdef *, Z32);
 extern Z32 h_size_cooc(hitdef *, N8);
 
+Z32 hit_crp_buffer( hitdef *h, Z32 *m, Z32 *f, int arg) {
+    Z8  *c;
+    FILE *cfp;
+    Z32 ret;
+    Z32 success;
+
+    struct stat  cstat;
+
+    *f = arg;
+
+    if ( !*f )
+      return -1;
+
+    h->levels->context = *f;
+    h->levels->h2m_cmp_func =    (*h2h_cmp_cooc);
+    h->levels->distance = 0;
+
+    h->levels->opt      = NULL;
+
+    return 0;
+  }
+
 Z32 hit_crp_args ( hitdef *h, Z32 *m, Z32 *f, int arg, Z8 *crpfile )
 {
   Z8  *c;
@@ -66,7 +88,7 @@ Z32 hit_crp_args ( hitdef *h, Z32 *m, Z32 *f, int arg, Z8 *crpfile )
   h->levels->context = *f; 
 
   /*h->levels->h2h_cmp_func =    (*h2h_cmp_cooc);*/
-  h->levels->h2m_cmp_func =    (*h2h_cmp_cooc);
+  h->levels->h2m_cmp_func =    (*h2h_cmp_crp);
   /*h->levels->m2m_cmp_func =    (*m2m_cmp_cooc);*/
  
   /*h->levels->cntxt_cmp_func =  (*h2h_cmp_cooc);*/
@@ -81,6 +103,29 @@ Z32 hit_crp_args ( hitdef *h, Z32 *m, Z32 *f, int arg, Z8 *crpfile )
   return ret; 
 }
 
+Z32 h2h_cmp_crp_lowlevel ( Z32 *a, Z32 *b, Z32 depth )
+{
+  int i; 
+  int d = depth;
+  for ( i = depth - 1; i >= 0; i--) {
+  	if (a[i] != 0) {
+  		d = i + 1;
+  	}
+  }
+
+  for ( i = 0; i < d; i++ )
+    if ( a[i] != b[i] )
+      return (a[i] > b[i]) ? 1 : -1;
+
+  return 0; 
+
+}
 
 
+Z32 h2h_cmp_crp ( Z32 *a, Z32 *b, hitdef *hit_def, Z32 level )
+{
+  N32 i; 
+  hitcmp *h = hit_def->levels+level;
 
+  return h2h_cmp_crp_lowlevel ( a, b, h->context );
+}

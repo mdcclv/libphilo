@@ -32,7 +32,6 @@ Search new_search( dbh *db, Z8 *method, Z8 *arg, int ascii, int limit, int corpu
 	Search s = malloc( sizeof(Search_) );
 	int plugin = 0;
 	int j;
-	struct stat corpusstat;
 	if (limit < 1) {
 	  limit = DEFAULT_PRINT_LIMIT;
 	}
@@ -60,16 +59,7 @@ Search new_search( dbh *db, Z8 *method, Z8 *arg, int ascii, int limit, int corpu
 		s->hit_def->output = HIT_OUT_ASCII;
 	}
 	if (corpussize && corpusfile) {
-	  (void) stat(corpusfile, &corpusstat);
-	  s->map = new_Gmap ( corpusstat.st_size/(sizeof(Z32)*corpussize), corpussize );
-	  if ( ( s->map->gm_l = hit_crp_args ( s->hit_def, s->map->gm_h, &s->map->gm_f, corpussize, corpusfile ) ) <= 0 )
-	    {
-	      strcpy ( s->errstr, BAD_CORPUS_ARGZ );
-	      //Should't return an int here.
-	      return BAD_ARGZ;
-	    }
-	  s->map->gm_eod = s->map->gm_l;
-
+		set_corpus(s,corpusfile,corpussize);
 	}
 	return s; 
 }
@@ -88,6 +78,24 @@ int delete_search( Search s) {
   old_hitdef(s->hit_def);
   free(s);
   return 0;
+}
+
+int set_corpus( Search s, Z8 *corpuspath, Z8 *corpusarg){
+	struct stat corpusstat;
+	FILE * corpusfile;
+	Z32 *buffer;
+	Z32 corpussize = (Z32)(corpusarg);
+	stat(corpuspath, &corpusstat);
+	
+	s->map = new_Gmap ( corpusstat.st_size/(sizeof(Z32)*corpussize), corpussize );
+	
+	if ( ( s->map->gm_l = hit_crp_args ( s->hit_def, s->map->gm_h, &s->map->gm_f, corpussize, corpuspath ) ) <= 0 ) {
+		strcpy ( s->errstr, BAD_CORPUS_ARGZ );
+	    //Should't return an int here.
+	    return BAD_ARGZ;
+	}
+	s->map->gm_eod = s->map->gm_l;
+	return 0;
 }
 
 int set_search_method( Search s, Z8 *methodstring, Z8* argstring) {

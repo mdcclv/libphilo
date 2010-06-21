@@ -17,7 +17,7 @@ sys.stderr = codecs.getwriter("utf-8")(sys.stderr)
 # But global variables are okay for short scripts like this one.
 
 objects = OHCOVector(["doc","div1","div2","div3","para","sent","word"])
-mapping = {"text":"doc",
+mapping = {"TEI":"doc",
 	   "front":"div",
 	   "div":"div",
 	   "div0":"div",
@@ -27,6 +27,9 @@ mapping = {"text":"doc",
 	   "p":"para",
 	   "sp":"para",
 	   "stage":"para"}
+
+metamap = { "titleStmt/author" => "author",
+			"titleStmt/title" => "title" }
 
 parallel = {"line":0,
 	    "byte":0}
@@ -186,6 +189,6 @@ print >> dbs, "#define FREQ1_LENGTH " + str(freq1_l)
 print >> dbs, "#define FREQ2_LENGTH " + str(freq2_l)
 print >> dbs, "#define OFFST_LENGTH " + str(offset_l)
 print >> dbs, "#define NEGATIVES {0,0,0,0,0,0,0,0,0}"
-print >> dbs, "#define DEPENDENCIES {-1,0,1,2,3,4,5,0,7}"
+print >> dbs, "#define DEPENDENCIES {-1,0,1,2,3,4,5,0,0}"
 print >> dbs, "#define BITLENGTHS {%s}" % ",".join(str(i) for i in vl)
 dbs.close()
