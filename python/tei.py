@@ -27,22 +27,42 @@ mapping = {"TEI":"doc",
 	   "sp":"para",
 	   "stage":"para"}
 
-metamap = { "titleStmt/author" => "author",
-			"titleStmt/title" => "title",
-			"div/head" => "head"}
+metamap = { "titleStmt/author" : "author",
+			"titleStmt/title" : "title",
+			"div/head" : "head"}
+
+metahandler = None
+
 parallel = {"line":0,
 	    "byte":0}
 
 sortkeys = "-k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n -k 6,6n -k 7,7n -k 8,8n"
+
+context = []
 blocksize = 2048
 index_cutoff = 10
 print objects
 
+def context_match(context,pattern):
+	nodes = [x for x in pattern.split("/") if x != ""]
+	for node in nodes:
+		if node in context:
+			position = context.index(node)
+			context = context[position:]
+		else:
+			return False
+	return True
+	
 #next, we start to build up the handlers that will accept expat events.
 def tagstart(name,attributes): # I should really wrap this in a class to hold state.
 	"""translates xml tags into OHCOVector push events 
 	   by looking them up in a mapping"""
+	global metahandler
 	parallel["byte"] = parser.CurrentByteIndex
+	context.append(name)
+	for pattern in metamap:
+		if context_match(context,pattern):
+			metahandler = metamap[pattern]
 	if name in mapping:
 		type = mapping[name]
 		objects.push(type)
@@ -62,7 +82,12 @@ def tagstart(name,attributes): # I should really wrap this in a class to hold st
 
 def tagend(name):
 	"""translates xml end tags into OHCOVector pull events"""
+	global metahandler
 	parallel["byte"] = parser.CurrentByteIndex
+	for pattern in metamap:
+		if context_match(context,pattern):
+			metahandler = None
+	context.pop()
 	if name in mapping:
 		type = mapping[name]
 		#print "found %s, pulling from %s" % (name, type)
@@ -79,6 +104,9 @@ def tokenizer(text):
 	parallel["byte"] = parser.CurrentByteIndex
 	tokens = re.finditer(ur"([\w\u2019]+)|([\.;:?!])",text,re.U)
 	offset = parallel["byte"]
+	if metahandler:
+		cleantext = re.sub("[\n\t]"," ",text)
+		print >> o, "meta %s %s" % (metahandler,cleantext)
 	for token in tokens:
 		if token.group(1):
 			objects.push("word")
@@ -92,6 +120,7 @@ def tokenizer(text):
 			byte_length = len(text[:char_offset].encode("UTF-8"))
 			print >> o, "sent " + token.group(2) + " " + " ".join(map(str,objects.v)) \
 			       + " " + str(offset + byte_length) + " " + str(parallel["line"])
+	return 0
 
 
 def default(data):
@@ -152,7 +181,7 @@ for line in words:
 print str(count) + " words total." 
 print v
 
-vl = [max(1,int(math.ceil(math.log(float(x),2.0)))) for x in v]
+vl = [int(math.ceil(math.log(float(x),2.0))) if x > 0 else 1 for x in v]
 
 print vl
 width = sum(x for x in vl)
@@ -175,6 +204,7 @@ for word,f in freq.items():
 freq1_l = math.ceil(math.log(float(freq1),2.0))
 freq2_l = math.ceil(math.log(float(freq2),2.0))
 offset_l = math.ceil(math.log(float(offset),2.0))
+
 print "freq1: %d; %d bits" % (freq1,freq1_l)
 print "freq2: %d; %d bits" % (freq2,freq2_l)
 print "offst: %d; %d bits" % (offset,offset_l)

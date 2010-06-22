@@ -41,6 +41,7 @@ class OHCOVector:
 				sys.stderr.write("bad vector definition\n")
 				
 	def push(self,otype):
+		"""handles the start of an object.  recursive types are special."""
 		depth = 0
 		#if we have a verbatim type listed in self.levels,
 		#we can calculate it's position directly.
@@ -75,26 +76,27 @@ class OHCOVector:
 		return 0
 
 	def pull(self,otype):
-		#pull really only makes sense for a hierarchical type, 
-		#where we can keep a stack of how many elements currently exist.
 		depth = 0
 		if otype in self.levels:
-			pass		
+			depth = self.levels.index(otype)
+			r = [i if n <= depth else 0 for n,i in enumerate(self.v)]
 		elif otype in self.hier:
 			d = self.hier.index(otype)
 			for htype in self.hier[:d]:
 				for i in range (self.maxdepths[htype]):
-					depth += 1			
+					depth += 1
 			for j in range(self.currentdepths[otype]):
-				depth += 1			
+				depth += 1
 			if self.nesteddepths[otype] > 0:
 				self.nesteddepths[otype] -= 1
 			else:
 				self.currentdepths[otype] -= 1
+			r = [i if n <= depth else 0 for n,i in enumerate(self.v)]
 			self.v[depth] += 1
-			for j in range(depth + 1,len(self.levels)):
-				self.v[j]=0						
-		return 0
+			self.v = [j if n <= depth else 0 for n,j in enumerate(self.v)]
+#			for j in range(depth + 1,len(self.levels)):
+#				self.v[j]=0						
+		return r
 
 	def __str__(self):
 		r = []
