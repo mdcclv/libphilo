@@ -30,7 +30,7 @@ t = Toms.Toms(dbp + "/toms")
 # all metadata is in one flat file for now.  We access it like a list of hashes, keyed by object id.
 
 #Print out basic HTTP/HTML headers and container <div> elements.
-print "Content-Type: text/html"
+print "Content-Type: text/html; charset=utf-8"
 print
 print '<html>\n<body style="background-color:grey">'
 print '<div style="margin: 15px; padding:10px; width:800px;  \
