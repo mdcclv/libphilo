@@ -11,6 +11,10 @@ class Toms:
 		self.data = {}
 
 	def __getitem__(self,n):
+		try:
+			len(n)
+		except TypeError:
+			n = [n]
 		if len(n) < len(self.pos):
 			n = [n[i] if i < len(n) else 0 for i,x in enumerate(self.pos)]
 		if obj_cmp(self.pos,n) > 0:
@@ -53,3 +57,24 @@ def obj_cmp(x,y):
 		if a > b:
 			return 1
 	return 0
+
+def toms_select(toms, value_pattern, field_pattern=r".*?", corpus=None):
+	if corpus:
+		cptr = corpus.__iter__()
+		c = cptr.next()
+	result = []
+	for i in toms:
+		r = None
+		for field in i:
+			if field != "id":
+				if re.match(field_pattern,field):
+					if re.match(value_pattern,i[field], re.IGNORECASE):
+						r = i
+		if corpus:
+			while obj_cmp(c,i["id"]) < 0:
+				c = cptr.next()
+			if obj_cmp(c,["id"]) > 0:
+				r = None
+		if r:
+			result.append(r)
+	return result

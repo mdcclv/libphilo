@@ -5,9 +5,12 @@ import subprocess
 import time
 import struct
 import HitList
+import re
 
-def query(db,terms,n=1,corpus_file=None,corpus_size=0,method=None,method_arg=None):
+def query(db,terms,corpus_file=None,corpus_size=0,method=None,method_arg=None):
 	sys.stdout.flush()
+	expandedterms = format_query(terms)
+	words_per_hit = len(terms.split(" "))
 	origpid = os.getpid()
 	hfile = str(origpid) + ".hitlist"
 	dir = "/var/lib/philologic/hitlists/"
@@ -27,7 +30,7 @@ def query(db,terms,n=1,corpus_file=None,corpus_size=0,method=None,method_arg=Non
 			if corpus_file and corpus_size:
 				args.extend(("--corpusfile", corpus_file , "--corpussize" , str(corpus_size)))
 			worker = subprocess.Popen(args,stdin=subprocess.PIPE,stdout=hl,stderr=err)
-			worker.communicate(terms)
+			worker.communicate(format_query(terms))
 			worker.stdin.close()
 			worker.wait()
 			#do something to mark query as finished
@@ -37,11 +40,41 @@ def query(db,terms,n=1,corpus_file=None,corpus_size=0,method=None,method_arg=Non
 			sys.exit(0)
 	else:
 		hl.close()
-		return HitList.HitList("/var/lib/philologic/hitlists/" + hfile,n)
+		return HitList.HitList("/var/lib/philologic/hitlists/" + hfile,words_per_hit)
 
-def packbib(fmt,vals):
-	buf = ""
-	for i in vals:
-		t = struct.pack(fmt,i)
-		buf += t
+def format_query(qstring):
+    q = [level.split("|") for level in qstring.split(" ") ]
+    qs = ""
+    for level in q:
+        for token in level:
+            qs += token + "\n"
+        qs += "\n"
+    qs = qs[:-1] # to trim off the last newline.  just a quirk of the language.
+    return qs
+    
+def get_context(file,offset,file_length,width):
+    lo = max(0,offset - width)
+    breakpoint = offset - lo
+    ro = min(file_length, offset + width)
+
+    fh = open(file)
+    fh.seek(lo)
+    buf = fh.read(ro - lo)
+
+    lbuf = buf[:breakpoint]
+    rbuf = buf[breakpoint:]
+
+    lbuf = re.sub(r"^[^<]*>|^\w+\s|<.*?>|<[^>]*$|\s\w+$","",lbuf)
+    (word,rbuf) = rbuf.split(" ",1)
+    rbuf = re.sub(r"^[^<]*>|^\w+\s|<.*?>|<[^>]*$|\s\w+$","",rbuf)
+    
+    buf = lbuf + "<span style=\"color:red\">" + word + "</span> " + rbuf
+    fh.close()
+    return buf
+    
+def get_object(file,start,end):
+	fh = open(file)
+	fh.seek(start)
+	buf = fh.read(end - start)
+	fh.close()
 	return buf

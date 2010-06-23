@@ -66,4 +66,4 @@ class HitList(object):
 		self.fh.seek(offset)
 		buffer = self.fh.read(self.hitsize)
 		return(struct.unpack(self.format,buffer))
-		
+	
