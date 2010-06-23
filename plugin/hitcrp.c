@@ -110,6 +110,7 @@ Z32 h2h_cmp_crp_lowlevel ( Z32 *a, Z32 *b, Z32 depth )
   for ( i = depth - 1; i >= 0; i--) {
   	if (a[i] != 0) {
   		d = i + 1;
+  		break;
   	}
   }
 

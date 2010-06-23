@@ -38,7 +38,7 @@ class Toms:
 			yield self.data
 
 	def parseline(self):
-		fields = self.line.split("\t")
+		fields = self.line.strip().split("\t")
 		idstr = fields.pop(0)
 		self.pos = [int(x) for x in idstr.split(" ")]
 		self.data = {"id":self.pos}

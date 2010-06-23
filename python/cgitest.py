@@ -2,12 +2,11 @@
 import cgi
 import cgitb
 import os
-import Query
 import sys
 import re
 import time
-import Bibliography
-import philo3to4
+
+from libphilo import *
 
 cgitb.enable()
 

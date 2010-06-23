@@ -17,24 +17,24 @@ sys.stderr = codecs.getwriter("utf-8")(sys.stderr)
 
 objects = OHCOVector(["doc","div1","div2","div3","para","sent","word"])
 mapping = {"TEI":"doc",
-	   "front":"div",
-	   "div":"div",
-	   "div0":"div",
-	   "div1":"div",
-	   "div2":"div",
-	   "div3":"div",
-	   "p":"para",
-	   "sp":"para",
-	   "stage":"para"}
+       "front":"div",
+       "div":"div",
+       "div0":"div",
+       "div1":"div",
+       "div2":"div",
+       "div3":"div",
+       "p":"para",
+       "sp":"para",
+       "stage":"para"}
 
 metamap = { "titleStmt/author" : "author",
-			"titleStmt/title" : "title",
-			"div/head" : "head"}
+            "titleStmt/title" : "title",
+            "div/head" : "head"}
 
 metahandler = None
 
 parallel = {"line":0,
-	    "byte":0}
+        "byte":0}
 
 sortkeys = "-k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n -k 6,6n -k 7,7n -k 8,8n"
 
@@ -44,87 +44,90 @@ index_cutoff = 10
 print objects
 
 def context_match(context,pattern):
-	nodes = [x for x in pattern.split("/") if x != ""]
-	for node in nodes:
-		if node in context:
-			position = context.index(node)
-			context = context[position:]
-		else:
-			return False
-	return True
-	
+    nodes = [x for x in pattern.split("/") if x != ""]
+    for node in nodes:
+        if node in context:
+            position = context.index(node)
+            context = context[position:]
+        else:
+            return False
+    return True
+    
 #next, we start to build up the handlers that will accept expat events.
 def tagstart(name,attributes): # I should really wrap this in a class to hold state.
-	"""translates xml tags into OHCOVector push events 
-	   by looking them up in a mapping"""
-	global metahandler
-	parallel["byte"] = parser.CurrentByteIndex
-	context.append(name)
-	for pattern in metamap:
-		if context_match(context,pattern):
-			metahandler = metamap[pattern]
-	if name in mapping:
-		type = mapping[name]
-		objects.push(type)
-		attlist = ""
-		for k,v in attributes.iteritems():
-			attlist += " %s=\"%s\"" % (k,v) 
-		print >> o, type + " " + "<" + name + attlist + "> " + \
-		      " ".join(map(str,objects.v)) + " " + str(parallel["byte"]) + \
-		      " " + str(parallel["line"])
-	if name == "l":
-		if "n" in attributes.keys():
-			parallel["line"] = int(attributes["n"])
-		else:
-			parallel["line"] += 1
-		print >> o, "line %d %d" % (parallel["byte"],parallel["line"])
+    """translates xml tags into OHCOVector push events 
+       by looking them up in a mapping"""
+    global metahandler
+    parallel["byte"] = parser.CurrentByteIndex
+    context.append(name)
+    for pattern in metamap:
+        if context_match(context,pattern):
+            metahandler = metamap[pattern]
+    if name in mapping:
+        type = mapping[name]
+        objects.push(type)
+        attlist = ""
+        for k,v in attributes.iteritems():
+            attlist += " %s=\"%s\"" % (k,v) 
+        print >> o, type + " " + "<" + name + attlist + "> " + \
+              " ".join(map(str,objects.v)) + " " + str(parallel["byte"]) + \
+              " " + str(parallel["line"])
+        if type == "doc":
+            print >> o, "meta %s %s" % ("filename", filename)
+
+    if name == "l":
+        if "n" in attributes.keys():
+            parallel["line"] = int(attributes["n"])
+        else:
+            parallel["line"] += 1
+        print >> o, "line %d %d" % (parallel["byte"],parallel["line"])
 
 
 def tagend(name):
-	"""translates xml end tags into OHCOVector pull events"""
-	global metahandler
-	parallel["byte"] = parser.CurrentByteIndex
-	for pattern in metamap:
-		if context_match(context,pattern):
-			metahandler = None
-	context.pop()
-	if name in mapping:
-		type = mapping[name]
-		#print "found %s, pulling from %s" % (name, type)
-		objects.pull(type)
-		print >> o, type + " " + "</" + name + ">" + " ".join(map(str,objects.v)) + \
-		       " " + str(parallel["byte"]) + " " + str(parallel["line"])
-	
+    """translates xml end tags into OHCOVector pull events"""
+    global metahandler
+    parallel["byte"] = parser.CurrentByteIndex
+    for pattern in metamap:
+        if context_match(context,pattern):
+            metahandler = None
+    context.pop()
+    if name in mapping:
+        type = mapping[name]
+        #print "found %s, pulling from %s" % (name, type)
+        objects.pull(type)
+        print >> o, type + " " + "</" + name + ">" + " ".join(map(str,objects.v)) + \
+               " " + str(parallel["byte"]) + " " + str(parallel["line"])
+    
 
 def tokenizer(text):
-	"""uses a regex to split text into sentences and words, 
-	   and pushes each into the OHCOVector.  A more sophisticated implementation 
-	   would have a buffer, and check for tag-spanning words, or if we're in a 
-	   metadata tag, and dispatch tokens accordingly."""
-	parallel["byte"] = parser.CurrentByteIndex
-	tokens = re.finditer(ur"([\w\u2019]+)|([\.;:?!])",text,re.U)
-	offset = parallel["byte"]
-	if metahandler:
-		cleantext = re.sub("[\n\t]"," ",text)
-		print >> o, "meta %s %s" % (metahandler,cleantext)
-	for token in tokens:
-		if token.group(1):
-			objects.push("word")
-			char_offset = token.start(1)
-			byte_length = len(text[:char_offset].encode("UTF-8"))
-			print >> o, "word " + token.group(1) + " " + " ".join(map(str,objects.v)) \
-			      + " " + str(offset + byte_length) + " " + str(parallel["line"])
-		if token.group(2):
-			objects.push("sent")
-			char_offset = token.start(1)
-			byte_length = len(text[:char_offset].encode("UTF-8"))
-			print >> o, "sent " + token.group(2) + " " + " ".join(map(str,objects.v)) \
-			       + " " + str(offset + byte_length) + " " + str(parallel["line"])
-	return 0
+    """uses a regex to split text into sentences and words, 
+       and pushes each into the OHCOVector.  A more sophisticated implementation 
+       would have a buffer, and check for tag-spanning words, or if we're in a 
+       metadata tag, and dispatch tokens accordingly."""
+    parallel["byte"] = parser.CurrentByteIndex
+    tokens = re.finditer(ur"([\w\u2019]+)|([\.;:?!])",text,re.U)
+    offset = parallel["byte"]
+    if metahandler:
+        cleantext = re.sub("[\n\t]"," ",text)
+        print >> o, "meta %s %s" % (metahandler,cleantext)
+    for token in tokens:
+        if token.group(1):
+            objects.push("word")
+            char_offset = token.start(1)
+            byte_length = len(text[:char_offset].encode("UTF-8"))
+            print >> o, "word " + token.group(1) + " " + " ".join(map(str,objects.v)) \
+                  + " " + str(offset + byte_length) + " " + str(parallel["line"])
+        if token.group(2):
+            objects.push("sent")
+            char_offset = token.start(1)
+            byte_length = len(text[:char_offset].encode("UTF-8"))
+            print >> o, "sent " + token.group(2) + " " + " ".join(map(str,objects.v)) \
+                   + " " + str(offset + byte_length) + " " + str(parallel["line"])
+    return 0
 
 
 def default(data):
-	parallel["byte"] = parser.CurrentByteIndex
+    parallel["byte"] = parser.CurrentByteIndex
 
 
 #the main outer loop.
@@ -132,33 +135,36 @@ print "starting up expat"
 fileinfo = []
 workdir = os.path.commonprefix(sys.argv[1:])
 for file in sys.argv[1:]: # not counting argv[0], which is the name of the program.
-	offset = 0
-	f = open(file)
-	filename = os.path.basename(file)
-	path = os.path.abspath(file)
-        outpath = path + ".raw"
-        o = codecs.open(outpath, "w", "utf-8")
-	print "parsing %s @ %s" % (filename,path)
-	parser = xml.parsers.expat.ParserCreate()
-	parser.StartElementHandler = tagstart
-	parser.EndElementHandler = tagend
-	parser.CharacterDataHandler = tokenizer
-	parser.ParseFile(f)
-        fileinfo.append({"path":path,"name":filename,"raw":outpath})
+    offset = 0
+    f = open(file)
+    filename = os.path.basename(file)
+    path = os.path.abspath(file)
+    outpath = path + ".raw"
+    o = codecs.open(outpath, "w", "utf-8")
+    print "parsing %s @ %s" % (filename,path)
+    parser = xml.parsers.expat.ParserCreate()
+    parser.StartElementHandler = tagstart
+    parser.EndElementHandler = tagend
+    parser.CharacterDataHandler = tokenizer
+    parser.ParseFile(f)
+    fileinfo.append({"path":path,"name":filename,"raw":outpath})
 
 print "parsed %d files successfully." % len(fileinfo)
 for file in fileinfo:
     print "sorting %s" % file["name"]
     file["words"] = file["path"] + ".words.sorted"
-    command = "cat %s | egrep \"^word \" | cut -d \" \" -f 2,3,4,5,6,7,8,9,10,11 | sort %s > %s" % (file["raw"],sortkeys,file["words"] )
-    os.system(command)
+    file["toms"] = file["path"] + ".toms.sorted"
+    wordcommand = "cat %s | egrep \"^word \" | cut -d \" \" -f 2,3,4,5,6,7,8,9,10,11 | sort %s > %s" % (file["raw"],sortkeys,file["words"] )
+    os.system(wordcommand)
+    tomscommand = "cat %s | egrep -v \"^word \" | ./mktoms.py | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n > %s" % (file["raw"],file["toms"])
+    os.system(tomscommand)
     
 print "done sorting individual files."
-filearg = " ".join(file["words"] for file in fileinfo)
+wordfilearg = " ".join(file["words"] for file in fileinfo)
 print "merging...this may take a while"
 
-os.system("sort -m %s %s > %s" % (sortkeys,filearg, workdir + "/all.words.sorted") )
-
+os.system("sort -m %s %s > %s" % (sortkeys,wordfilearg, workdir + "/all.words.sorted") )
+os.system("sort -m -k 1,1n -k 2,2n -k 3,3n -k 4,4n %s > %s" % (" ".join(file["toms"] for file in fileinfo), workdir + "/all.toms.sorted") )
 print "done merging.\nnow generating compression spec."
 
 words = open(workdir + "/all.words.sorted")
