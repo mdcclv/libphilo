@@ -23,6 +23,8 @@ pathinfo = os.environ["PATH_INFO"] # contains the "extra" path after the script,
 path_list = [i for i in pathinfo.split("/") if i != ""] # split and knock off the leading "/"
 db = path_list.pop(0) # the first element is the dbname.  we'll use the rest later.
 
+df = DynamicForm.validate(form)
+
 # Now find the db and open it.
 dbp = "/var/lib/philologic/databases/" + db
 t = Toms.Toms(dbp + "/toms") 
@@ -33,6 +35,7 @@ t = Toms.Toms(dbp + "/toms")
 print "Content-Type: text/html; charset=utf-8"
 print
 print '<html>\n<body style="background-color:grey">'
+print df
 print '<div style="margin: 15px; padding:10px; width:800px;  \
                    background-color:white; border:solid black 3px; -moz-border-radius:5px; \
                    -webkit-border-radius:5px;">'
@@ -40,33 +43,26 @@ print "<div id=\"dbname\" style=\"text-align: center; font-weight:bold; font-siz
       "</div><hr/>"
 
 # set up reasonable defaults.
-qs = ""
-metastring = ""
+
 corpusfile = None
 corpussize = 0
 corpus = None
 
 # parse the CGI query parameters.
-if "query" in form:
-    qs = form["query"].value
-
-if "meta" in form:
-    metastring = form["meta"].value
-    corpus = Toms.toms_select(t,metastring)
-	# we have to pack the corpus into a file of binary integers 
+if len(df["meta"]) > 0:
+    corpus = [obj for obj in t if DynamicForm.formmatch(df,obj)]
     corpussize = 7
     corpusfile = "/var/lib/philologic/hitlists/tmpcorpus"
     cfh = open(corpusfile,"w")
     for d in corpus:
+        print repr(d["id"]) + "<br/>"
         cfh.write(struct.pack("=7i",*d["id"])) #unpack the id list into discrete arguments to pack.
     cfh.close()
 
 # print out a form.
-print '<form action="%s"><table style="border:none">' % (os.environ["SCRIPT_NAME"] + "/" + db)
-print '<tr><td>query:</td><td><input name="query" type="text" value="%s"/></td></tr>' % qs
-print '<tr><td>meta:</td><td><input name="meta" type="text" value="%s"/></td></tr>' % metastring
-print '</table><input type="submit"/></form>'
+print DynamicForm.generate(df,db)
 
+# if we still have more path, we should just display an object and quit.
 if path_list:
 	object = [int(x) for x in path_list]
 	filename = dbp + "/TEXTS/" + t[object[0]]["filename"]
@@ -75,8 +71,14 @@ if path_list:
 	print "<pre>" + text + "</pre>"
 	print '</div></body></html>'
 	exit()
-# go execute the query.
-q = Query.query(dbp,qs,corpusfile,corpussize)
+
+if corpus == []:
+    print "no matching text objects."
+    print '</div></body></html>'
+    exit()
+
+# otherwise, go execute the query.
+q = Query.query(dbp,df["query"],corpusfile,corpussize)
 
 # wait for it to finish.  not strictly necessary.  
 # could wait until we have 50 results, then print those.
@@ -85,7 +87,7 @@ while not q.done:
     q.update()
 
 print "<hr/>" + str(len(q)) + " results.<br/>"
-    
+
 # print out all the results.    
 for hit in q:
     doc = t[hit[0]] # look up the document in the toms.
@@ -97,7 +99,7 @@ for hit in q:
 
     print "%s,%s : %s" % (doc["title"],doc["author"],doc["filename"])
 
-	#Ugly metadata formatting.
+	#Ugly metadata/link formatting.
     i = 2
     while i <= 4:
         if hit[i -1] > 0:

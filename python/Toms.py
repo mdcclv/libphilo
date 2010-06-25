@@ -9,12 +9,19 @@ class Toms:
 		self.pos = [0]
 		self.line = ""
 		self.data = {}
+		self.cache = {}
 
 	def __getitem__(self,n):
 		try:
 			len(n)
 		except TypeError:
 			n = [n]
+		cachekey = len(n)
+		try:
+			if self.cache[cachekey]["id"] == n:
+				return self.cache[cachekey]
+		except (IndexError,KeyError):
+			pass
 		if len(n) < len(self.pos):
 			n = [n[i] if i < len(n) else 0 for i,x in enumerate(self.pos)]
 		if obj_cmp(self.pos,n) > 0:
@@ -25,6 +32,7 @@ class Toms:
 		if obj_cmp(self.pos,n) > 0:
 			raise IndexError
 		else:
+			self.cache[cachekey] = self.data
 			return self.data
 
 	def rewind(self):
