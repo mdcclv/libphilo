@@ -6,6 +6,7 @@ import sys
 import codecs
 import math
 from OHCOVector import *
+import mktoms
 
 # First we need to get our outputs taking utf8.  Very Important!
 sys.stdout = codecs.getwriter("utf-8")(sys.stdout) 
@@ -130,18 +131,41 @@ def default(data):
     parallel["byte"] = parser.CurrentByteIndex
 
 
+usage = "usage: load4 destination_path texts ..."
+try :
+    destination = sys.argv[1]
+except IndexError:
+    print usage
+    exit()
+
+print "setting up directory in " + destination
+
+os.mkdir(destination)
+workdir = destination + "/WORK/"
+textdir = destination + "/TEXT/"
+os.mkdir(workdir)
+os.mkdir(textdir)
+os.chdir(workdir)
+
+texts = sys.argv[2:]
+if not sys.argv[2:]:
+    print usage
+    exit()
+
 #the main outer loop.
 print "starting up expat"
 fileinfo = []
-workdir = os.path.commonprefix(sys.argv[1:])
-for file in sys.argv[1:]: # not counting argv[0], which is the name of the program.
+
+for file in texts: # not counting argv[0], which is the name of the program.
     offset = 0
     f = open(file)
     filename = os.path.basename(file)
-    path = os.path.abspath(file)
-    outpath = path + ".raw"
+    origpath = os.path.abspath(file)
+    path = textdir + filename
+    os.system("cp %s %s" % (origpath, path))
+    outpath = workdir + filename + ".raw"
     o = codecs.open(outpath, "w", "utf-8")
-    print "parsing %s @ %s" % (filename,path)
+    print "parsing %s @ %s" % (filename,origpath)
     parser = xml.parsers.expat.ParserCreate()
     parser.StartElementHandler = tagstart
     parser.EndElementHandler = tagend
@@ -153,10 +177,15 @@ print "parsed %d files successfully." % len(fileinfo)
 for file in fileinfo:
     print "sorting %s" % file["name"]
     file["words"] = file["path"] + ".words.sorted"
-    file["toms"] = file["path"] + ".toms.sorted"
     wordcommand = "cat %s | egrep \"^word \" | cut -d \" \" -f 2,3,4,5,6,7,8,9,10,11 | sort %s > %s" % (file["raw"],sortkeys,file["words"] )
     os.system(wordcommand)
-    tomscommand = "cat %s | egrep -v \"^word \" | ./mktoms.py | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n > %s" % (file["raw"],file["toms"])
+
+for file in fileinfo:
+    print "building toms for %s" % file["name"]
+    file["toms"] = file["path"] + ".toms"
+    Toms.mktoms(open(file["raw"],"r"),open(file["toms"],"w"))
+    file["sortedtoms"] = file["path"] + ".toms.sorted"
+    tomscommand = "cat %s | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n -k 5,5n > %s" % (file["toms"],file["sortedtoms"])
     os.system(tomscommand)
     
 print "done sorting individual files."
@@ -164,7 +193,7 @@ wordfilearg = " ".join(file["words"] for file in fileinfo)
 print "merging...this may take a while"
 
 os.system("sort -m %s %s > %s" % (sortkeys,wordfilearg, workdir + "/all.words.sorted") )
-os.system("sort -m -k 1,1n -k 2,2n -k 3,3n -k 4,4n %s > %s" % (" ".join(file["toms"] for file in fileinfo), workdir + "/all.toms.sorted") )
+os.system("sort -m -k 1,1n -k 2,2n -k 3,3n -k 4,4n %s > %s" % (" ".join(file["sortedtoms"] for file in fileinfo), workdir + "/all.toms.sorted") )
 print "done merging.\nnow generating compression spec."
 
 words = open(workdir + "/all.words.sorted")
@@ -187,7 +216,7 @@ for line in words:
 print str(count) + " words total." 
 print v
 
-vl = [int(math.ceil(math.log(float(x),2.0))) if x > 0 else 1 for x in v]
+vl = [max(int(math.ceil(math.log(float(x),2.0))),1) if x > 0 else 1 for x in v]
 
 print vl
 width = sum(x for x in vl)
@@ -215,7 +244,7 @@ print "freq1: %d; %d bits" % (freq1,freq1_l)
 print "freq2: %d; %d bits" % (freq2,freq2_l)
 print "offst: %d; %d bits" % (offset,offset_l)
 
-dbs = open(workdir + "dbspec4.h","w")
+dbs = open(workdir + "dbspecs4.h","w")
 print >> dbs, "#define FIELDS 9"
 print >> dbs, "#define TYPE_LENGTH 1"
 print >> dbs, "#define BLK_SIZE " + str(blocksize)
@@ -226,3 +255,13 @@ print >> dbs, "#define NEGATIVES {0,0,0,0,0,0,0,0,0}"
 print >> dbs, "#define DEPENDENCIES {-1,0,1,2,3,4,5,0,0}"
 print >> dbs, "#define BITLENGTHS {%s}" % ",".join(str(i) for i in vl)
 dbs.close()
+print "analysis done.  packing index."
+os.system("pack4 " + workdir + "dbspecs4.h < " + workdir + "/all.words.sorted")
+
+print "all indices built. moving into place."
+os.system("mv index ../index")
+os.system("mv index.1 ../index.1")
+os.system("mv all.toms.sorted ../toms")
+os.mkdir(destination + "/src/")
+os.system("mv dbspecs4.h ../src/dbspecs4.h")
+print "done."

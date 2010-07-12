@@ -34,7 +34,9 @@ t = Toms.Toms(dbp + "/toms")
 #Print out basic HTTP/HTML headers and container <div> elements.
 print "Content-Type: text/html; charset=utf-8"
 print
-print '<html>\n<body style="background-color:grey">'
+print '<html>'
+print '<head>' + DynamicForm.getjs() + '</head>'
+print '<body style="background-color:grey">'
 print df
 print '<div style="margin: 15px; padding:10px; width:800px;  \
                    background-color:white; border:solid black 3px; -moz-border-radius:5px; \
@@ -64,13 +66,13 @@ print DynamicForm.generate(df,db)
 
 # if we still have more path, we should just display an object and quit.
 if path_list:
-	object = [int(x) for x in path_list]
-	filename = dbp + "/TEXTS/" + t[object[0]]["filename"]
-	meta = t[object]
-	text = Query.get_object(filename,int(meta["start"]),int(meta["end"]))
-	print "<pre>" + text + "</pre>"
-	print '</div></body></html>'
-	exit()
+    object = [int(x) for x in path_list]
+    filename = dbp + "/TEXT/" + t[object[0]]["filename"]
+    meta = t[object]
+    text = Query.get_object(filename,int(meta["start"]),int(meta["end"]))
+    print "<pre>" + text + "</pre>"
+    print '</div></body></html>'
+    exit()
 
 if corpus == []:
     print "no matching text objects."
@@ -90,16 +92,17 @@ print "<hr/>" + str(len(q)) + " results.<br/>"
 
 # print out all the results.    
 for hit in q:
+    print hit
     doc = t[hit[0]] # look up the document in the toms.
     filename = doc["filename"]
-    path = dbp + "/TEXTS/" + filename
+    path = dbp + "/TEXT/" + filename
     file_length = doc["end"]
     offset = hit[6] # I should abstract the actual positions of document, byte, etc.
     buf = Query.get_context(path,offset,file_length,500)
 
     print "%s,%s : %s" % (doc["title"],doc["author"],doc["filename"])
 
-	#Ugly metadata/link formatting.
+    #Ugly metadata/link formatting.
     i = 2
     while i <= 4:
         if hit[i -1] > 0:

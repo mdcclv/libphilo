@@ -36,6 +36,7 @@ def generate(df,dbname):
         df["meta"] = [{"value":""}]
     for m in df["meta"]:
         this = "meta" + str(i)
+        next = "meta" + str(i + 1)
         r += '<tr>\n'
         r += '<td>meta:</td><td><input name="%s" type="text" value="%s"/>' % (this,m["value"] if m["value"] else "")
         r += ' in <select name="%s"><option value="" selected="selected">any</option>\n' % (this + "field")
@@ -49,7 +50,7 @@ def generate(df,dbname):
         i += 1
         r += '<select name=%s><option value="" selected="selected">.</option> \
                               <option value="and">and</option> \
-                              <option value="or">or</option></select>'
+                              <option value="or">or</option></select>' % (next + "op")
     r += "</td></tr></table><input type='submit'/></form>"
     return r
 
@@ -82,3 +83,17 @@ def metamatch(meta,object):
                 if re.search(meta["value"],object[field],re.IGNORECASE):
                     return True
     return False
+
+def getjs():
+	r = """
+	<script type="text/javascript" src="/jquery-1.4.2.min.js"></script>
+	<script type="text/javascript">
+	$(document).ready(function(){
+    	$("select[name*=op]").change(function() {
+			1;
+		});
+	});
+	
+	</script>
+	"""
+	return r
