@@ -9,19 +9,13 @@ from OHCOVector import *
 import Toms
 import TEIParser
 
-# First we need to get our outputs taking utf8.  Very Important!
-sys.stdout = codecs.getwriter("utf-8")(sys.stdout) 
-sys.stderr = codecs.getwriter("utf-8")(sys.stderr)
-
-# Initialize our main data structure.
-# There really should be a TeiParser class to contain them.
-# But global variables are okay for short scripts like this one.
-
+#Initialize some globals
 sortkeys = "-k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n -k 6,6n -k 7,7n -k 8,8n"
 blocksize = 2048
 index_cutoff = 10
 
 usage = "usage: load4 destination_path texts ..."
+
 try :
     destination = sys.argv[1]
 except IndexError:
@@ -32,7 +26,7 @@ print "setting up directory in " + destination
 
 os.mkdir(destination)
 workdir = destination + "/WORK/"
-textdir = destination + "/TEXT/"
+textdir = destination + "/TEXTS/"
 os.mkdir(workdir)
 os.mkdir(textdir)
 os.chdir(workdir)
@@ -42,12 +36,10 @@ if not sys.argv[2:]:
     print usage
     exit()
 
-#the main outer loop.
-print "starting up expat"
 fileinfo = []
 
-for docid,file in enumerate(texts): # not counting argv[0], which is the name of the program.
-    offset = 0
+"parsing..."
+for docid,file in enumerate(texts): 
     f = open(file)
     filename = os.path.basename(file)
     origpath = os.path.abspath(file)
@@ -58,15 +50,9 @@ for docid,file in enumerate(texts): # not counting argv[0], which is the name of
     print "parsing %s @ %s" % (filename,origpath)
     parser = TEIParser.TEIParser(filename,docid)
     parser.parse(f,o)
-#    parser = xml.parsers.expat.ParserCreate()
-#    parser.StartElementHandler = tagstart
-#    parser.EndElementHandler = tagend
-#    parser.CharacterDataHandler = tokenizer
-#    parser.ParseFile(f)
-
     fileinfo.append({"path":path,"name":filename,"raw":outpath})
 
-print "parsed %d files successfully." % len(fileinfo)
+print "parsed %d files successfully.\nsorting..." % len(fileinfo)
 for file in fileinfo:
     print "sorting %s" % file["name"]
     file["words"] = file["path"] + ".words.sorted"
@@ -74,20 +60,19 @@ for file in fileinfo:
     os.system(wordcommand)
 
 for file in fileinfo:
-    print "building toms for %s" % file["name"]
+    print "building metadata for %s" % file["name"]
     file["toms"] = file["path"] + ".toms"
     Toms.mktoms(open(file["raw"],"r"),open(file["toms"],"w"))
     file["sortedtoms"] = file["path"] + ".toms.sorted"
     tomscommand = "cat %s | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n -k 5,5n > %s" % (file["toms"],file["sortedtoms"])
     os.system(tomscommand)
     
-print "done sorting individual files."
+print "done sorting individual files.\nmerging..."
 wordfilearg = " ".join(file["words"] for file in fileinfo)
-print "merging...this may take a while"
 
 os.system("sort -m %s %s > %s" % (sortkeys,wordfilearg, workdir + "/all.words.sorted") )
 os.system("sort -m -k 1,1n -k 2,2n -k 3,3n -k 4,4n %s > %s" % (" ".join(file["sortedtoms"] for file in fileinfo), workdir + "/all.toms.sorted") )
-print "done merging.\nnow generating compression spec."
+print "done merging.\nnow analyzing for compression...."
 
 words = open(workdir + "/all.words.sorted")
 testline = words.readline()
@@ -148,6 +133,7 @@ print >> dbs, "#define NEGATIVES {0,0,0,0,0,0,0,0,0}"
 print >> dbs, "#define DEPENDENCIES {-1,0,1,2,3,4,5,0,0}"
 print >> dbs, "#define BITLENGTHS {%s}" % ",".join(str(i) for i in vl)
 dbs.close()
+
 print "analysis done.  packing index."
 os.system("pack4 " + workdir + "dbspecs4.h < " + workdir + "/all.words.sorted")
 

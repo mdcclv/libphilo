@@ -66,7 +66,7 @@ def get_context(file,offset,file_length,width):
 
     lbuf = re.sub(r"^[^<]*>|^\w+\s|<.*?>|<[^>]*$|\s\w+$","",lbuf)
     (word,rbuf) = rbuf.split(" ",1)
-    rbuf = re.sub(r"^[^<]*>|^\w+\s|<.*?>|<[^>]*$|\s\w+$","",rbuf)
+    rbuf = re.sub(r"^[^<]*>|<.*?>|<[^>]*$|\s\w+$","",rbuf)
     
     buf = lbuf + "<span style=\"color:red\">" + word + "</span> " + rbuf
     fh.close()

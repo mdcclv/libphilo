@@ -12,10 +12,6 @@ class TEIParser:
         
         self.context = []
         self.metahandler = None
-
-        self.parallel = {"line":0,
-                         "byte":0}
-
         self.objects = OHCOVector(["doc","div1","div2","div3","para","sent","word"])
         self.objects.v[0] = docid
         
@@ -33,6 +29,9 @@ class TEIParser:
         self.metamap = { "titleStmt/author" : "author",
                          "titleStmt/title" : "title",
                          "div/head" : "head"}
+
+        self.parallel = {"line":0,
+                         "byte":0}
 
         self.parser = xml.parsers.expat.ParserCreate()
         self.parser.StartElementHandler = self.tagstart
@@ -58,7 +57,6 @@ class TEIParser:
     def tagstart(self,name,attributes):
         """translates xml tags into OHCOVector push events 
            by looking them up in a mapping"""
-
         self.parallel["byte"] = self.parser.CurrentByteIndex
         self.context.append(name)
         for pattern in self.metamap:

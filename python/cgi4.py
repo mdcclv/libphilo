@@ -67,7 +67,7 @@ print DynamicForm.generate(df,db)
 # if we still have more path, we should just display an object and quit.
 if path_list:
     object = [int(x) for x in path_list]
-    filename = dbp + "/TEXT/" + t[object[0]]["filename"]
+    filename = dbp + "/TEXTS/" + t[object[0]]["filename"]
     meta = t[object]
     text = Query.get_object(filename,int(meta["start"]),int(meta["end"]))
     print "<pre>" + text + "</pre>"
@@ -95,7 +95,7 @@ for hit in q:
     print hit
     doc = t[hit[0]] # look up the document in the toms.
     filename = doc["filename"]
-    path = dbp + "/TEXT/" + filename
+    path = dbp + "/TEXTS/" + filename
     file_length = doc["end"]
     offset = hit[6] # I should abstract the actual positions of document, byte, etc.
     buf = Query.get_context(path,offset,file_length,500)
