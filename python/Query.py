@@ -52,7 +52,7 @@ def format_query(qstring):
     qs = qs[:-1] # to trim off the last newline.  just a quirk of the language.
     return qs
     
-def get_context(file,offset,file_length,width):
+def get_context(file,offset,file_length,width,f):
     lo = max(0,offset - width)
     breakpoint = offset - lo
     ro = min(file_length, offset + width)
@@ -60,17 +60,12 @@ def get_context(file,offset,file_length,width):
     fh = open(file)
     fh.seek(lo)
     buf = fh.read(ro - lo)
-
     lbuf = buf[:breakpoint]
     rbuf = buf[breakpoint:]
-
-    lbuf = re.sub(r"^[^<]*>|^\w+\s|<.*?>|<[^>]*$|\s\w+$","",lbuf)
     (word,rbuf) = rbuf.split(" ",1)
-    rbuf = re.sub(r"^[^<]*>|<.*?>|<[^>]*$|\s\w+$","",rbuf)
-    
-    buf = lbuf + "<span style=\"color:red\">" + word + "</span> " + rbuf
-    fh.close()
-    return buf
+    fh.close()    
+
+    return f.format(lbuf) + "<span style=\"color:red\"> " + word + "</span> " + f.format(rbuf)
     
 def get_object(file,start,end):
 	fh = open(file)

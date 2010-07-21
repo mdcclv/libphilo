@@ -64,7 +64,8 @@ def obj_cmp(x,y):
 			return -1
 		if a > b:
 			return 1
-	return 0
+	else:
+		return 0
 
 def toms_select(toms, value_pattern, field_pattern=r".*?", corpus=None):
 	if corpus:
