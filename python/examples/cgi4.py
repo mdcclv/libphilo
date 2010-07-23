@@ -79,6 +79,12 @@ if corpus == []:
     print '</div></body></html>'
     exit()
 
+if not df["query"]:
+	docs = Toms.toms_select(t,"doc","type")
+	for doc in docs:
+		print "%s,%s : %s <br/>" % (doc["title"],doc["author"],doc["filename"])
+	print '</div></body></html>'
+	exit()
 # otherwise, go execute the query.
 q = Query.query(dbp,df["query"],corpusfile,corpussize)
 
