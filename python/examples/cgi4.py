@@ -7,7 +7,7 @@ import re
 import time
 import struct
 
-from libphilo import *
+from philologic import *
 
 #Enable the CGI debugger.  Incredibly useful.
 cgitb.enable()

@@ -5,9 +5,7 @@ import os
 import sys
 import codecs
 import math
-from OHCOVector import *
-import Toms
-import TEIParser
+from philologic import OHCOVector,Toms,TEIParser
 
 #Initialize some globals
 sortkeys = "-k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n -k 6,6n -k 7,7n -k 8,8n"
