@@ -8,10 +8,10 @@ CC= gcc
 PH_BUILDENV = 
 PH_LDSEARCHFLAGS = 
 
-all: 	search4	libphilo.dylib db/pack
+all: 	search4	libphilo.dylib db/pack4
 
-db/pack: db/pack.c db/pack.h db/db.c db/db.h
-	(cd db; make pack)
+db/pack4: db/pack.c db/pack.h db/db.c db/db.h
+	(cd db; make pack4)
 
 search4: search4.c search.o retreive.o gmap.o word.o blockmap.o level.o out.o log.o plugin/libindex.a db/db.o db/bitsvector.o db/unpack.o
 	$(PH_BUILDENV) $(CC) $(CFLAGS) $(CPPFLAGS) $(PH_CFLAGS) $(LDFLAGS) $(PH_LDSEARCHFLAGS) search4.c search.o retreive.o gmap.o word.o blockmap.o level.o out.o log.o db/db.o db/bitsvector.o db/unpack.o plugin/libindex.a -lgdbm -o search4
@@ -47,8 +47,8 @@ log.o:		log.h log.c
 
 install:	all
 	/usr/bin/install -c search4 ${exec_prefix}/bin
-
+	/usr/bin/install -c db/pack4 ${exec_prefix}/bin
 clean: 
-	rm -f *.o *~ search4
+	rm -f *.o *~ search4 pack4
 	(cd plugin; make clean)
 	(cd db; make clean)

@@ -1,10 +1,29 @@
-PhiloLogic 4 is still EXTREMELY pre-alpha.
+PhiloLogic 4 is still pre-alpha.
 Only recommended for internal testing/intellectual curiosity purposes at this point.
+That said, if you install the [included] python bindings, you should be able to get
+a working cgi script.
+
+Dependencies: 
+gdbm
+
+Installation instructions:
+make
+sudo make install
+cd python
+python setup.py install
+cd examples
+cp cgi4.py YOUR_CGI_PATH
+cp load4.py YOUR_HOME_DIRECTORY_OR_BIN
+
+Build Instructions:
+python load4.py /var/lib/philologic/databases/dbname LIST OF TEI FILES ...
+
+View Instructions:
+after installing a database, point your browser at:
+http://localhost/YOUR_CGI_PATH/cgi4.py/dbname
+
 TODO:
-1)debug index packing code.
-2)parallelize index merges.
-3)fix 32-bit pointer casting in the log subsystem.
-4)tighten up API's.
-5)perl, python, php bindings.
+1)fix 32-bit pointer casting in the log subsystem.
+2)tighten up API's.
 --
 Richard Whaling
