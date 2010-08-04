@@ -9,12 +9,40 @@ import struct
 
 from philologic import *
 
-classes = ['head', 'stage', 'l', 'ab', 'speaker', 'p', 'pb']
+classes = ['head', 'stage', 'l', 'ab', 'speaker', 'pb']
 myformat = {}
 for c in classes:
     myformat[c] = "<span class='%s'>" % c
     myformat["/" + c] = "</span>"
 
+myformat["p"] = "<p/>"
+myformat["/p"] = ""
+
+style = """
+<style type="text/css">
+span.l{
+    display:block;
+}
+span.ab{
+    display:block;
+}
+span.speaker {
+    display: block;
+    font-weight:bold;
+    margin-left:-10px;
+}
+span.stage {
+    display: block;
+    font-style:italic;
+    margin-left: 20px;
+}
+span.head {
+display: block;
+font-weight:bold;
+margin: 10px 0px 10px 0px
+}
+</style>
+"""
 #Enable the CGI debugger.  Incredibly useful.
 cgitb.enable()
 
@@ -41,7 +69,7 @@ f = Formatter.Formatter(myformat)
 print "Content-Type: text/html; charset=utf-8"
 print
 print '<html>'
-print '<head>' + DynamicForm.getjs() + '</head>'
+print '<head>' + style + DynamicForm.getjs() + '</head>'
 print '<body style="background-color:grey">'
 print df
 print '<div style="margin: 15px; padding:10px; width:1000px;  \

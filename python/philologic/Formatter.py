@@ -56,7 +56,7 @@ class Formatter(HTMLParser.HTMLParser):
 
     def handle_data(self,data):
         data = re.sub("^.*?>","",data,1)
-        data = data.strip()
+        #data = data.strip()
         self.buffer += data
 
 
