@@ -9,6 +9,12 @@ import struct
 
 from philologic import *
 
+classes = ['head', 'stage', 'l', 'ab', 'speaker', 'p', 'pb']
+myformat = {}
+for c in classes:
+    myformat[c] = "<span class='%s'>" % c
+    myformat["/" + c] = "</span>"
+
 #Enable the CGI debugger.  Incredibly useful.
 cgitb.enable()
 
@@ -28,7 +34,7 @@ df = DynamicForm.validate(form)
 # Now find the db and open it.
 dbp = "/var/lib/philologic/databases/" + db
 t = Toms.Toms(dbp + "/toms") 
-f = Formatter.Formatter()
+f = Formatter.Formatter(myformat)
 # all metadata is in one flat file for now.  We access it like a list of hashes, keyed by object id.
 
 #Print out basic HTTP/HTML headers and container <div> elements.
@@ -85,6 +91,7 @@ if not df["query"]:
 		print "%s,%s : %s <br/>" % (doc["title"],doc["author"],doc["filename"])
 	print '</div></body></html>'
 	exit()
+	
 # otherwise, go execute the query.
 q = Query.query(dbp,df["query"],corpusfile,corpussize)
 
@@ -120,6 +127,6 @@ for hit in q:
                 pass
         i += 1
 
-    print " : <div style='margin-left:40px; margin-bottom:10px; font-family:monospace'><pre>" + buf + "</pre></div>"
+    print " : <div style='margin-left:40px; margin-bottom:10px; font-family:monospace'>" + buf + "</div>"
 
 print '</div></body></html>'

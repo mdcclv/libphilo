@@ -121,6 +121,9 @@ def mktoms(file_in=sys.stdin,file_out=sys.stdout):
 					if item["type"] != "para": 
 						printhelper(item,file_out)
 			elif type == "meta":
-				(type,name,value) = line.strip().split(" ",2)
-				if name not in stack[-1]:
-					stack[-1][name] = value
+				try:
+					(type,name,value) = line.strip().split(" ",2)
+					if name not in stack[-1]:
+						stack[-1][name] = value
+				except ValueError:
+					pass

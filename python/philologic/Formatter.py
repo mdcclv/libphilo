@@ -11,6 +11,7 @@ TEIFormat = {"speaker":"\t",
 			 "/head":"\n------\n",
 			 "stage":"\n\t\t[",
 			 "/stage":"]\n",
+                         "l":"",
 			 "/l":"\n",
 			 "/ab":"\n",
 			 "p":"\t",
@@ -21,20 +22,38 @@ class Formatter(HTMLParser.HTMLParser):
     def __init__(self, table = TEIFormat):
         self.buffer = ""
         self.table = table
+        self.context = []
+
     def format(self,data):
         self.buffer = ""
+        self.context = []
         self.reset()
         self.feed(data)
         #self.close() 
         #don't close()--croaks on EOF mid-event, which we should assume will happen.
-        #instead, we just want to silently discard unparseable data.
+        #instead, we just want to silently discard unparseable data, and close all open tags.
+        for tag in self.context:
+            if tag in self.table:
+                self.buffer += self.table["/" + tag]
         return self.buffer
+
     def handle_starttag(self,tag,attr):
+        self.context.append(tag)
         if tag in self.table:
             self.buffer += self.table[tag]
+
     def handle_endtag(self,tag):
+        while len(self.context) != 0 and self.context[-1] != tag:
+            t = self.context.pop()
+            self.handle_endtag(t)
+        if len(self.context) == 0:
+            self.context = [tag] + self.context
+            if tag in self.table:
+                self.buffer = self.table[tag] + self.buffer 
+        self.context.pop()
         if "/" + tag in self.table:
             self.buffer += self.table["/" + tag]
+
     def handle_data(self,data):
         data = re.sub("^.*?>","",data,1)
         data = data.strip()

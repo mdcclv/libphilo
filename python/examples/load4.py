@@ -24,7 +24,7 @@ print "setting up directory in " + destination
 
 os.mkdir(destination)
 workdir = destination + "/WORK/"
-textdir = destination + "/TEXTS/"
+textdir = destination + "/TEXT/"
 os.mkdir(workdir)
 os.mkdir(textdir)
 os.chdir(workdir)
