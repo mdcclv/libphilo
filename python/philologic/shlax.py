@@ -3,7 +3,7 @@
 import re
 import sys
 
-TextSE = "[^<]+"
+TextSE = "(?P<Text>[^<]+)"
 UntilHyphen = "[^-]*-"
 Until2Hyphens = UntilHyphen + "([^-]" + UntilHyphen + ")*-"
 CommentCE = Until2Hyphens + ">?"
@@ -32,9 +32,46 @@ XML_SPE = TextSE + "|" + MarkupSPE
 ElemTagSPE = "<(?P<ElemName>" + Name + ")(?P<Attributes>(" + S + Name + "(" + S + ")?=(" + S + ")?(" + AttValSE + "))*)(" + S + ")?(?P<Empty>/)?>?"
 AttributeSPE = S + "(?P<AttName>" + Name + ")(" + S + ")?=(" + S + ")?(?P<AttVal>" + AttValSE + ")"
 
+CharRef ="&#[0-9]+;|&#x[0-9a-fA-F]+;"
+EntityRef = "&" + Name + ";"
+
+
 oldpattern = r"<[^>]+>"
 pattern = MarkupSPE
 
+def parsestring(string):
+	matches = re.finditer(XML_SPE, string)
+	for m in matches:
+		att = {}
+		name = ""
+		empty = False
+		match_start = m.start(0)
+		match_end = m.end(0)
+		content = m.group(0)
+		if m.group("Text"):
+			yield node(content,"text",match_start)
+		if m.group("EndTag"):
+			type = "EndTag"
+			name = m.group("EndTagName")
+		elif m.group("ElemTag"):
+			type = "StartTag"
+			em = re.match(ElemTagSPE,m.group(0))
+			if em.group("Empty"):
+				empty = True
+			name = em.group("ElemName")
+			attributes = em.group("Attributes")
+			amatches = re.finditer(AttributeSPE,attributes)
+			for am in amatches:
+				ad = am.groupdict()
+				aname = am.group("AttName")
+				aval = ad["DQAttVal"] or ad["SQAttVal"]
+				att[aname] = aval
+		else:
+			type = "Markup"
+		yield node(m.group(0),type,match_start,name,att)
+		if empty:
+			yield node("","EndTag",match_end,name,{})				
+				
 class parser():
 	def __init__(self,file):
 		self.f = file

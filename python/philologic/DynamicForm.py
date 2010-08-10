@@ -14,14 +14,14 @@ def validate(form):
         m_dict = {}
         if meta_n in form:
             m_dict["value"] = form[meta_n].value
-        else:
-            break
         if meta_n + "field" in form:
             m_dict["field"] = form[meta_n + "field"].value
         if meta_n + "type" in form:
             m_dict["type"] = form[meta_n + "type"].value
         if meta_n + "op" in form:
             m_dict["op"] = form[meta_n + "op"].value
+        if m_dict == {}:
+            break
         r["meta"].append(m_dict)
         i += 1
     return r
@@ -38,14 +38,21 @@ def generate(df,dbname):
         this = "meta" + str(i)
         next = "meta" + str(i + 1)
         r += '<tr>\n'
-        r += '<td>meta:</td><td><input name="%s" type="text" value="%s"/>' % (this,m["value"] if m["value"] else "")
-        r += ' in <select name="%s"><option value="" selected="selected">any</option>\n' % (this + "field")
-        for field in ["author","title","head","filename"]:
-            r += '<option value="%s">%s</option>\n' % (field,field)
+        r += '<td>meta:</td><td><input name="%s" type="text" value="%s"/>' % (this,m["value"] if "value" in m else "")
+        r += ' in <select name="%s"><option value="">any</option>\n' % (this + "field")
+
+        for fieldname in ["author","title","head","filename"]:
+            sel = ""
+            if "field" in m and m["field"] == fieldname: 
+                sel = "selected='selected'"
+            r += '<option value="%s" %s>%s</option>\n' % (fieldname,sel,fieldname)
         r += "</select>"
-        r += '<select name="%s"><option value="" selected="selected">object</option>\n' % (this + "type")
+        r += '<select name="%s"><option value="">object</option>\n' % (this + "type")
         for object in ["doc","div","div1","div2","div3"]:
-            r += '<option value="%s">%s</option>\n' % (object,object)
+            sel = ""
+            if "type" in m and m["type"] == object:
+                sel = "selected='selected'"
+            r += '<option value="%s" %s>%s</option>\n' % (object,sel,object)
         r += "</select>"
         i += 1
         r += '<select name=%s><option value="" selected="selected">.</option> \
@@ -85,15 +92,15 @@ def metamatch(meta,object):
     return False
 
 def getjs():
-	r = """
-	<script type="text/javascript" src="/jquery-1.4.2.min.js"></script>
-	<script type="text/javascript">
-	$(document).ready(function(){
-    	$("select[name*=op]").change(function() {
-			1;
-		});
-	});
-	
-	</script>
-	"""
-	return r
+    r = """
+    <script type="text/javascript" src="/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript">
+    $(document).ready(function(){
+        $("select[name*=op]").change(function() {
+            1;
+        });
+    });
+    
+    </script>
+    """
+    return r

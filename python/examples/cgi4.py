@@ -9,7 +9,7 @@ import struct
 
 from philologic import *
 
-classes = ['head', 'stage', 'l', 'ab', 'speaker', 'pb']
+classes = ['head', 'stage', 'l','ln', 'ab', 'speaker', 'pb']
 myformat = {}
 for c in classes:
     myformat[c] = "<span class='%s'>" % c
@@ -17,7 +17,8 @@ for c in classes:
 
 myformat["p"] = "<p/>"
 myformat["/p"] = ""
-
+myformat["span"] = "<span>"
+myformat["/span"] = "</span>"
 style = """
 <style type="text/css">
 span.l{
@@ -25,6 +26,9 @@ span.l{
 }
 span.ab{
     display:block;
+}
+span.ln{
+	display:block;
 }
 span.speaker {
     display: block;
@@ -62,7 +66,7 @@ df = DynamicForm.validate(form)
 # Now find the db and open it.
 dbp = "/var/lib/philologic/databases/" + db
 t = Toms.Toms(dbp + "/toms") 
-f = Formatter.Formatter(myformat)
+f = DirtyFormatter.Formatter(myformat)
 # all metadata is in one flat file for now.  We access it like a list of hashes, keyed by object id.
 
 #Print out basic HTTP/HTML headers and container <div> elements.

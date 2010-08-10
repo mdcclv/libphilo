@@ -8,39 +8,39 @@ import HitList
 import re
 
 def query(db,terms,corpus_file=None,corpus_size=0,method=None,method_arg=None):
-	sys.stdout.flush()
-	expandedterms = format_query(terms)
-	words_per_hit = len(terms.split(" "))
-	origpid = os.getpid()
-	hfile = str(origpid) + ".hitlist"
-	dir = "/var/lib/philologic/hitlists/"
-	hl = open(dir + hfile, "w")
-	err = open("/dev/null", "w")
-	pid = os.fork()
-	if pid == 0:
-		os.umask(0)
-		os.chdir(dir)
-		os.setsid()
-		pid = os.fork()
-		if pid > 0:
-			sys.exit(0)
-		else:
-			#now we're detached from the parent, and can do our work.
-			args = ["search4", db]
-			if corpus_file and corpus_size:
-				args.extend(("--corpusfile", corpus_file , "--corpussize" , str(corpus_size)))
-			worker = subprocess.Popen(args,stdin=subprocess.PIPE,stdout=hl,stderr=err)
-			worker.communicate(format_query(terms))
-			worker.stdin.close()
-			worker.wait()
-			#do something to mark query as finished
-			flag = open(dir + hfile + ".done","w")
-			flag.write(" ".join(args) + "\n")
-			flag.close()
-			sys.exit(0)
-	else:
-		hl.close()
-		return HitList.HitList("/var/lib/philologic/hitlists/" + hfile,words_per_hit)
+    sys.stdout.flush()
+    expandedterms = format_query(terms)
+    words_per_hit = len(terms.split(" "))
+    origpid = os.getpid()
+    hfile = str(origpid) + ".hitlist"
+    dir = "/var/lib/philologic/hitlists/"
+    hl = open(dir + hfile, "w")
+    err = open("/dev/null", "w")
+    pid = os.fork()
+    if pid == 0:
+        os.umask(0)
+        os.chdir(dir)
+        os.setsid()
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+        else:
+            #now we're detached from the parent, and can do our work.
+            args = ["search4", db]
+            if corpus_file and corpus_size:
+                args.extend(("--corpusfile", corpus_file , "--corpussize" , str(corpus_size)))
+            worker = subprocess.Popen(args,stdin=subprocess.PIPE,stdout=hl,stderr=err)
+            worker.communicate(format_query(terms))
+            worker.stdin.close()
+            worker.wait()
+            #do something to mark query as finished
+            flag = open(dir + hfile + ".done","w")
+            flag.write(" ".join(args) + "\n")
+            flag.close()
+            sys.exit(0)
+    else:
+        hl.close()
+        return HitList.HitList("/var/lib/philologic/hitlists/" + hfile,words_per_hit)
 
 def format_query(qstring):
     q = [level.split("|") for level in qstring.split(" ") ]
@@ -62,14 +62,14 @@ def get_context(file,offset,file_length,width,f):
     buf = fh.read(ro - lo)
     lbuf = buf[:breakpoint]
     rbuf = buf[breakpoint:]
-    (word,rbuf) = rbuf.split(" ",1)
+    (word,rbuf) = re.split("[\s.;:,<>?!]",rbuf,1)
     fh.close()    
 
-    return f.format(lbuf) + "<span style=\"color:red\"> " + word + "</span> " + f.format(rbuf)
+    return f.format(lbuf + "<span rend=\"preserve\" style=\"color:red\"> " + word + "</span> " + rbuf)
     
 def get_object(file,start,end):
-	fh = open(file)
-	fh.seek(start)
-	buf = fh.read(end - start)
-	fh.close()
-	return buf
+    fh = open(file)
+    fh.seek(start)
+    buf = fh.read(end - start)
+    fh.close()
+    return buf

@@ -2,6 +2,8 @@ import re
 import os
 import sys
 
+
+
 class Toms:
 	def __init__(self,file):
 		self.filename = file
@@ -98,7 +100,9 @@ def printhelper(item,fd):
 
 def mktoms(file_in=sys.stdin,file_out=sys.stdout):
 	stack = []
+	length = 0
 	for line in file_in:
+		length += len(line)
 		(type,rest) = line.strip().split(" ",1)
 		if type == "word":
 			pass
@@ -127,3 +131,11 @@ def mktoms(file_in=sys.stdin,file_out=sys.stdout):
 						stack[-1][name] = value
 				except ValueError:
 					pass
+	if len(stack) > 0:
+		for item in stack:
+			item["end"] = length
+			printhelper(item,file_out)
+
+if __name__ == "__main__":
+	mktoms()
+	
