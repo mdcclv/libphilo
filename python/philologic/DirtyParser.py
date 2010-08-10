@@ -2,6 +2,19 @@ from OHCOVector import *
 import shlax
 import re
 
+def parsework(info):
+	(docid,path,textdir,workdir) = info
+	f = open(path)
+	filename = os.path.basename(path)
+	origpath = os.path.abspath(path)
+	newpath = textdir + filename
+	os.system("cp %s %s" % (origpath, newpath))
+	outpath = workdir + filename + ".raw"
+	o = codecs.open(outpath, "w", "utf-8")
+	print "parsing %d : %s" % (docid,filename)
+	parser = DirtyParser(filename,docid)
+	parser.parse(f,o)
+
 class DirtyParser:
     def __init__(self,filename,docid):
         self.reader = None
