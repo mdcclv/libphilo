@@ -36,7 +36,7 @@ if not sys.argv[2:]:
     exit()
 
 pool = multiprocessing.Pool(8)
-	
+
 "parsing..."
 pool.map(DirtyParser.parsework,[(x[0],x[1],textdir,workdir) for x in enumerate(texts)])
 fileinfo = [{"name":x,"path":os.path.basename(x),"raw":workdir + os.path.basename(x) + ".raw"} for x in texts]

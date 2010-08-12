@@ -35,7 +35,6 @@ AttributeSPE = S + "(?P<AttName>" + Name + ")(" + S + ")?=(" + S + ")?(?P<AttVal
 CharRef ="&#[0-9]+;|&#x[0-9a-fA-F]+;"
 EntityRef = "&" + Name + ";"
 
-
 oldpattern = r"<[^>]+>"
 pattern = MarkupSPE
 
@@ -49,8 +48,8 @@ def parsestring(string):
 		match_end = m.end(0)
 		content = m.group(0)
 		if m.group("Text"):
-			yield node(content,"text",match_start)
-		if m.group("EndTag"):
+			type = "text"
+		elif m.group("EndTag"):
 			type = "EndTag"
 			name = m.group("EndTagName")
 		elif m.group("ElemTag"):
