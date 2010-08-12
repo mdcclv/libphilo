@@ -1,8 +1,11 @@
 from OHCOVector import *
 import shlax
 import re
+import os
+import Toms
 
 def parsework(info):
+	sortkeys = "-k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n -k 6,6n -k 7,7n -k 8,8n"
 	(docid,path,textdir,workdir) = info
 	f = open(path)
 	filename = os.path.basename(path)
@@ -14,6 +17,12 @@ def parsework(info):
 	print "parsing %d : %s" % (docid,filename)
 	parser = DirtyParser(filename,docid)
 	parser.parse(f,o)
+	wordcommand = "cat %s | egrep \"^word \" | cut -d \" \" -f 2,3,4,5,6,7,8,9,10,11 | sort %s > %s" % (outpath,sortkeys,workdir + filename + ".words.sorted")
+	os.system(wordcommand)
+	tomsfile = workdir + filename + ".toms"
+	Toms.mktoms(open(outpath),open(tomsfile,"w"))
+	sortedtomsfile = workdir + filename + ".toms.sorted"
+	os.system("cat %s | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n -k 5,5n > %s" % (tomsfile,sortedtomsfile))
 
 class DirtyParser:
     def __init__(self,filename,docid):

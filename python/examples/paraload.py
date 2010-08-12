@@ -39,22 +39,15 @@ pool = multiprocessing.Pool(8)
 
 "parsing..."
 pool.map(DirtyParser.parsework,[(x[0],x[1],textdir,workdir) for x in enumerate(texts)])
-fileinfo = [{"name":x,"path":os.path.basename(x),"raw":workdir + os.path.basename(x) + ".raw"} for x in texts]
+	
+fileinfo = [{"name":x,
+			 "path":os.path.basename(x),
+	  		 "raw":workdir + os.path.basename(x) + ".raw",
+	  		 "words":workdir + os.path.basename(x) + ".words.sorted",
+	  		 "toms":workdir + os.path.basename(x) + ".toms",
+	  		 "sortedtoms":workdir + os.path.basename(x) + ".sortedtoms"} for x in texts]
 
 print "parsed %d files successfully.\nsorting..." % len(fileinfo)
-for file in fileinfo:
-    print "sorting %s" % file["name"]
-    file["words"] = file["path"] + ".words.sorted"
-    wordcommand = "cat %s | egrep \"^word \" | cut -d \" \" -f 2,3,4,5,6,7,8,9,10,11 | sort %s > %s" % (file["raw"],sortkeys,file["words"] )
-    os.system(wordcommand)
-
-for file in fileinfo:
-    print "building metadata for %s" % file["name"]
-    file["toms"] = file["path"] + ".toms"
-    Toms.mktoms(open(file["raw"],"r"),open(file["toms"],"w"))
-    file["sortedtoms"] = file["path"] + ".toms.sorted"
-    tomscommand = "cat %s | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n -k 5,5n > %s" % (file["toms"],file["sortedtoms"])
-    os.system(tomscommand)
     
 print "done sorting individual files.\nmerging..."
 wordfilearg = " ".join(file["words"] for file in fileinfo)
