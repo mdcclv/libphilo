@@ -37,15 +37,52 @@ if not sys.argv[2:]:
 
 pool = multiprocessing.Pool(8)
 
+def parsework(docid,path,textdir,workdir,q):
+        sortkeys = "-k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n -k 6,6n -k 7,7n -k 8,8n"
+#        (docid,path,textdir,workdir,q) = info
+        f = open(path)
+        filename = os.path.basename(path)
+        origpath = os.path.abspath(path)
+        newpath = textdir + filename
+        os.system("cp %s %s" % (origpath, newpath))
+        outpath = workdir + filename + ".raw"
+        o = codecs.open(outpath, "w", "utf-8")
+        print "parsing %d : %s" % (docid,filename)
+        parser = DirtyParser.DirtyParser(filename,docid)
+        parser.parse(f,o)
+        wordcommand = "cat %s | egrep \"^word \" | cut -d \" \" -f 2,3,4,5,6,7,8,9,10,11 | sort %s > %s" % (outpath,sortkeys,workdir + filename + ".words.sorted")
+        os.system(wordcommand)
+        tomsfile = workdir + filename + ".toms"
+        Toms.mktoms(open(outpath),open(tomsfile,"w"))
+        sortedtomsfile = workdir + filename + ".toms.sorted"
+        os.system("cat %s | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n -k 5,5n > %s" % (tomsfile,sortedtomsfile))
+        q.put(True)
+
+
 "parsing..."
-pool.map(DirtyParser.parsework,[(x[0],x[1],textdir,workdir) for x in enumerate(texts)])
-	
+max_workers = 8
+count = len(texts)
+if max_workers < 1:
+    exit()
+working = 0
+done = 0
+q = multiprocessing.Queue()
+parselist = ((x[0],x[1],textdir,workdir,q) for x in enumerate(texts))
+while done < count:
+    while working < max_workers and done + working < count:
+        p = multiprocessing.Process(target=parsework,args=parselist.next())
+        p.start()
+        working += 1
+    i = q.get()
+    working -= 1
+    done += 1
+
 fileinfo = [{"name":x,
 			 "path":os.path.basename(x),
 	  		 "raw":workdir + os.path.basename(x) + ".raw",
 	  		 "words":workdir + os.path.basename(x) + ".words.sorted",
 	  		 "toms":workdir + os.path.basename(x) + ".toms",
-	  		 "sortedtoms":workdir + os.path.basename(x) + ".sortedtoms"} for x in texts]
+	  		 "sortedtoms":workdir + os.path.basename(x) + ".toms.sorted"} for x in texts]
 
 print "parsed %d files successfully.\nsorting..." % len(fileinfo)
     
