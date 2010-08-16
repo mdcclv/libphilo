@@ -177,11 +177,11 @@ int hitbuffer_finish(hitbuffer *hb) {
 		return 0;
 	}
 	if (hb->type == 0) {	
-		fprintf(stderr, "%s: %d\n", hb->word, (int)hb->freq);
+	  //		fprintf(stderr, "%s: %d\n", hb->word, (int)hb->freq);
 		write_dir(hb);
 	}
 	else if (hb->type == 1) {
-		fprintf(stderr, "%s: %d [%d blocks]\n", hb->word, (int)hb->freq, (int)hb->dir_length);
+	  //	fprintf(stderr, "%s: %d [%d blocks]\n", hb->word, (int)hb->freq, (int)hb->dir_length);
 		write_dir(hb);
 		write_blk(hb);
 	}
