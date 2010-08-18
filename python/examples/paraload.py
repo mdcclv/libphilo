@@ -6,7 +6,7 @@ import sys
 import codecs
 import math
 import multiprocessing
-from philologic import OHCOVector,Toms,DirtyParser
+from philologic import OHCOVector,Toms,AbstractParser
 
 #Initialize some globals
 sortkeys = "-k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n -k 6,6n -k 7,7n -k 8,8n"
@@ -48,16 +48,16 @@ def parsework(docid,path,textdir,workdir,q):
         outpath = workdir + filename + ".raw"
         o = codecs.open(outpath, "w", "utf-8")
         print "parsing %d : %s" % (docid,filename)
-        parser = DirtyParser.DirtyParser(filename,docid)
-        parser.parse(f,o)
+        parser = AbstractParser.AbstractParser(filename,docid)
+        r = parser.parse(f,o)
         wordcommand = "cat %s | egrep \"^word \" | cut -d \" \" -f 2,3,4,5,6,7,8,9,10,11 | sort %s > %s" % (outpath,sortkeys,workdir + filename + ".words.sorted")
         os.system(wordcommand)
         tomsfile = workdir + filename + ".toms"
         Toms.mktoms(open(outpath),open(tomsfile,"w"))
         sortedtomsfile = workdir + filename + ".toms.sorted"
         os.system("cat %s | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n -k 5,5n > %s" % (tomsfile,sortedtomsfile))
-        q.put(True)
-
+        q.put(r)
+        sys.exit()
 
 "parsing..."
 max_workers = 8
@@ -68,22 +68,30 @@ working = 0
 done = 0
 q = multiprocessing.Queue()
 parselist = ((x[0],x[1],textdir,workdir,q) for x in enumerate(texts))
+maxspecs = [0,0,0,0,0,0,0,0,0]
+totalcounts = {}
 while done < count:
     while working < max_workers and done + working < count:
         p = multiprocessing.Process(target=parsework,args=parselist.next())
         p.start()
         working += 1
     i = q.get()
+    specs,counts = i
+    maxspecs = [max(x,y) for x,y in zip(specs,maxspecs)]
+    for word,wordcount in counts.items():
+        totalcounts[word] = totalcounts.get(word,0) + wordcount
     working -= 1
     done += 1
 
 fileinfo = [{"name":x,
-			 "path":os.path.basename(x),
-	  		 "raw":workdir + os.path.basename(x) + ".raw",
-	  		 "words":workdir + os.path.basename(x) + ".words.sorted",
-	  		 "toms":workdir + os.path.basename(x) + ".toms",
-	  		 "sortedtoms":workdir + os.path.basename(x) + ".toms.sorted"} for x in texts]
+             "path":os.path.basename(x),
+             "raw":workdir + os.path.basename(x) + ".raw",
+             "words":workdir + os.path.basename(x) + ".words.sorted",
+             "toms":workdir + os.path.basename(x) + ".toms",
+             "sortedtoms":workdir + os.path.basename(x) + ".toms.sorted"} for x in texts]
 
+print maxspecs
+print "%d total tokens in %d unique types." % (sum(x for x in totalcounts.values()),len(totalcounts.keys()))
 print "parsed %d files successfully.\nsorting..." % len(fileinfo)
     
 print "done sorting individual files.\nmerging..."
