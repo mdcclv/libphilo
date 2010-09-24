@@ -24,7 +24,7 @@ class OHCOVector:
             if m:
                 type = m.group(1)
                 n = m.group(2)
-                self.types[lev] = lev
+                self.types[lev] = type
                 if type not in self.hier:
                     self.hier.append(type)
                 self.maxdepths[type] = int(n)
@@ -46,15 +46,15 @@ class OHCOVector:
         #if we have a verbatim type listed in self.levels,
         #we can calculate it's position directly.
         if otype in self.levels:
-            depth = self.levels.index(otype)
-            type = self.types[otype]
-            order = self.hier.index(type)
-            current = depth + 1
-            for htype in self.hier[:order]:
-                for k in range(self.maxdepths[htype]):
-                    current -= 1
-            self.currentdepths[type] = current
-
+            try:
+                depth = self.levels.index(otype)
+                type = self.types[otype]
+                order = self.hier.index(type) # oo bad.
+                current = depth + 1
+                for htype in self.hier[:order]:
+                    for k in range(self.maxdepths[htype]):
+                        current -= 1
+                self.currentdepths[type] = current
         #if we have a hierarchical type listed in self.hier,
         #we have to walk through the hierarchy, and check the stack,
         #to find the correct position
