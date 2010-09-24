@@ -109,19 +109,18 @@ Z32 h2h_cmp_crp_lowlevel ( Z32 *a, Z32 *b, Z32 depth )
   int d = depth;
   for ( i = depth - 1; i >= 0; i--) {
   	if (a[i] != 0) {
-  		d = i + 1;
+  		d = i;
   		break;
-  	}
+  	}	
   }
-
-  for ( i = 0; i < d; i++ )
+  // is this wrong for document-level depth in some cases?
+  for ( i = 0; i <= d; i++ )
     if ( a[i] != b[i] )
       return (a[i] > b[i]) ? 1 : -1;
 
   return 0; 
 
 }
-
 
 Z32 h2h_cmp_crp ( Z32 *a, Z32 *b, hitdef *hit_def, Z32 level )
 {

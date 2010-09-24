@@ -684,193 +684,125 @@ Z32 load_hits ( Search s, Gmap hits, N32 howmany, Gmap res )
 
 
 
-Z32 filternload_hits ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap hits, N32 howmany, Gmap res )
-{
-  Z32 status = 0; 
-  Z32 put_status = 0; 
+Z32 filternload_hits ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap hits, N32 howmany, Gmap res ) {
+    Z32 status = 0; 
+    Z32 put_status = 0; 
+    Z32 *map_ptr;
+    Z32 *res_ptr;
+    Z32 ctr;       
+    Z32 map_pos;
+    Z8 logmesg[256];
 
-  Z32 *map_ptr;
-  Z32 *res_ptr;
-  Z32  ctr;       
+    /* 
+    OK, here's the logic of what we are doing: 
+    we have a block ("hits") of <howmany> hits; we also have a map, 
+    either a search corpus, or search results from the previous 
+    level. We only need the hits that match the objects on 
+    the map (based on the search criteria, hitcmp_func/hitcmp_obj);
+    */
 
-  Z32 map_pos; 
-
-  Z8 logmesg[256];
-
-  /* 
-     OK, here's the logic of what we are doing: 
-
-     we have a block ("hits") of <howmany> hits; we also have a map, 
-     either a search corpus, or search results from the previous 
-     level. We only need the hits that match the objects on 
-     the map (based on the search criteria, hitcmp_func/hitcmp_obj);
-   */
-
-  map_pos = map->gm_c; 
-
-
-  /*for ( ctr = 0; ctr < howmany; ctr++ )*/
-
-  ctr = 0; 
-
-  while ( ctr < howmany )
-    {
-      map_ptr = gm_get_cur_pos ( map ); 
-
-      /*
-	so, first we FF the map until we find an object that is
-	actually "larger" or "equal" (based on our comparison
-	function) than the next hit on the block; 
-       */
-
-      while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos( hits, ctr), s->hit_def, bn ) )
-	{
-	  while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos( hits, ctr), s->hit_def, bn ) < 0 )
-	    {
-
-	  /* 
-	     of course, if we've reached the end of the map before
-	     we found any matching hits, that means there's nothing
-	     of interest for us in this block. However, we *can't return*
-	     just yet -- even though there's nothing in the block we 
-	     could use right away, there might be hits in it that 
-	     will match something on another map in the next iteration --
-	     i.e., if this is only a partial map.
-	  */
-	      
-	      if ( !gm_inc_pos ( map ) ) 
-		{
-		  status |= RETR_END_OF_MAP;
-	
-		  s_log ( s->debug, L_INFO, NULL, "END OF MAP reached while filtering;" ); 
-		   break;
+    map_pos = map->gm_c;
+    /*for ( ctr = 0; ctr < howmany; ctr++ )*/
+    ctr = 0;
+ 	while ( ctr < howmany ) {
+        map_ptr = gm_get_cur_pos ( map );
+    	/*
+		so, first we FF the map until we find an object that is
+		actually "larger" or "equal" (based on our comparison
+		function) than the next hit on the block; 
+        */
+        while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos( hits, ctr), s->hit_def, bn ) ) {
+	  		while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos( hits, ctr), s->hit_def, bn ) < 0 ) { 
+	    		/* 
+	    		of course, if we've reached the end of the map before
+	    		we found any matching hits, that means there's nothing
+	    		of interest for us in this block. However, we *can't return*
+	    		just yet -- even though there's nothing in the block we 
+	    		could use right away, there might be hits in it that 
+	    		will match something on another map in the next iteration --
+	    		i.e., if this is only a partial map.
+	  			*/
+			   	if ( !gm_inc_pos ( map ) ) {
+		    		status |= RETR_END_OF_MAP;
+			    	s_log ( s->debug, L_INFO, NULL, "END OF MAP reached while filtering;" ); 
+  		        	break;
+		    	}
+	        	map_ptr = gm_get_cur_pos ( map );
+	    	}
+	        if ( status & RETR_END_OF_MAP ) break;
+			/* 
+	     	and now we have to FF the hit list until we find a hit
+	     	that's less or equal than the current map object; thus, 
+	     	continuing alternating between these 2 loops, we are going
+	     	to either find a match, or reach the end of either the map
+	     	or the hit block. 
+	  		*/
+		    while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr ), s->hit_def, bn ) > 0 ) {
+		        ctr++;
+			    /* 
+				again, if we have reached the end of the block before
+				we found an exact match -- there's nothing (left) for us
+				in this block and it is safe to mark the block as "clean".
+	            */
+		        if ( ctr == howmany ) {
+				    status |= RETR_BLK_CLEAN;
+					break;
+				}
+	    	}
+			if ( status & RETR_BLK_CLEAN )
+	 	    break;
 		}
-	      
-	      map_ptr = gm_get_cur_pos ( map ); 
-	    }
-
-	  if ( status & RETR_END_OF_MAP )
-	    break;
-
-	  /* 
-	     and now we have to FF the hit list until we find a hit
-	     that's less or equal than the current map object; thus, 
-	     continuing alternating between these 2 loops, we are going
-	     to either find a match, or reach the end of either the map
-	     or the hit block. 
-	  */
-
-	  while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr ), s->hit_def, bn ) > 0 )
-	    {
-	      ctr++; 
-	      
-	      /* 
-		 again, if we have reached the end of the block before
-		 we found an exact match -- there's nothing (left) for us
-		 in this block and it is safe to mark the block as "clean".
-	       */
-		  
-	      if ( ctr == howmany )
-		{
-		  status |= RETR_BLK_CLEAN;
-		  break;
+        if ( ( status & RETR_END_OF_MAP ) || ( status & RETR_BLK_CLEAN ) ) break;
+	    /*
+		And now, the matches. Note, that there can be more than one
+		element from the map that matches this hit! For example, we
+		are searching for co-occurences of "a" and "the"; the map
+		already contains 3 different occurences of "a" in this
+		sentence. The hit for "the" that we have just found makes *3*
+		co-occurences with the 3 hits above. Of course, if there's
+		another "the" in the sentence, then it makes 3 more
+		cooccurences with those 3, so while we are packing these hits
+		away, we don't want to FF the map permanently -- we have to
+		start from this spot with the next hit from the list in the
+		next iteration.
+        */
+        while ( !s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) ) {
+			res_ptr = gm_get_eod ( res );
+			put_status = hit_put ( gm_get_pos ( hits, ctr), map_ptr, res_ptr, s->hit_def, bn );
+			gm_inc_eod ( res );
+            if ( map_ptr >= ( map->gm_h + map->gm_eod * map->gm_f ) ) break;
+            map_ptr += map->gm_f;        
 		}
-	    }
-
-	  if ( status & RETR_BLK_CLEAN )
-	    break;
-
-	}
-
-      if ( ( status & RETR_END_OF_MAP ) || ( status & RETR_BLK_CLEAN ) )
-	break;
-
-      /* 
-	 And now, the matches. Note, that there can be more than one
-	 element from the map that matches this hit! For example, we
-	 are searching for co-occurences of "a" and "the"; the map
-	 already contains 3 different occurences of "a" in this
-	 sentence. The hit for "the" that we have just found makes *3*
-	 co-occurences with the 3 hits above. Of course, if there's
-	 another "the" in the sentence, then it makes 3 more
-	 cooccurences with those 3, so while we are packing these hits
-	 away, we don't want to FF the map permanently -- we have to
-	 start from this spot with the next hit from the list in the
-	 next iteration.  
-      */
-	  
-      while ( !s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) )
-	{
-	  res_ptr = gm_get_eod ( res ); 
-
-	  put_status = hit_put ( gm_get_pos ( hits, ctr), map_ptr, res_ptr, s->hit_def, bn );  
-
-	  gm_inc_eod ( res ); 
-
-	  /* 
-	     so here's the temporary map_ptr increment, that we do
-	     w/out actually incrementing the Map pointer;
-	   */
-	  /*
-	     but first, let's make sure we *can* increment it;
-	     i.e., we're not at the end of the map:
-	   */
-	  //	  if ( map_ptr >= ( map->gm_h + map->gm_eod * map->gm_f ) )
-	  //	    break; 
-	  //	  map_ptr += map->gm_f;
-	  if (!gm_inc_pos(map)) {
-	    break;
-	  } else {
-	    map_ptr = gm_get_cur_pos(map);
-	  }
-	}
-
-      ctr++;
-
-      /* the search map will be FF-ed during the next loop iteration; */
-
+		ctr++;
+        /* the search map will be FF-ed during the next loop iteration; */
     }
+	/* 
+    If we have finished the entire hitblock, depending on how it 
+    happened (whether the last hit in the block was a match or not)
+    we might have not detected the fact; so let's check again:
+    */
 
-  /* 
-     If we have finished the entire hitblock, depending on how it 
-     happened (whether the last hit in the block was a match or not)
-     we might have not detected the fact; so let's check again:
-   */
-
-  if ( ctr == howmany )
-    {
-      s_log ( s->debug, L_INFO, NULL, "REACHED THE END OF HITBLOCK;" );
-      status |= RETR_BLK_CLEAN;
+    if ( ctr == howmany ) {
+        s_log ( s->debug, L_INFO, NULL, "REACHED THE END OF HITBLOCK;" );
+        status |= RETR_BLK_CLEAN;
     }
-
-  if ( res->gm_eod >= s->batch_limit )
-    status |= RETR_RESMAP_FULL; 
-
-  /* let's see if we've got any unprocessed hits left: */
-
-  if ( howmany - ctr )
-    {
-      w->blk_cached = n; 
-      
-      w->n_cached   = howmany - ctr; 
-      w->cached     = (Z32 *) malloc ( w->n_cached * s->hit_def->fields * sizeof (Z32) ); 
-
-      /*
-	copy_hits ( w->cached, hits, ctr, w->n_cached ); 
-       */
-
-      memcpy ( w->cached, gm_get_pos ( hits, ctr), s->hit_def->fields * w->n_cached * sizeof (Z32) ); 
-
-      status |= RETR_HITS_CACHED;
+    if ( res->gm_eod >= s->batch_limit )
+        status |= RETR_RESMAP_FULL; 
+	/* let's see if we've got any unprocessed hits left: */
+    if ( howmany - ctr ) {
+        w->blk_cached = n;       
+        w->n_cached   = howmany - ctr; 
+        w->cached     = (Z32 *) malloc ( w->n_cached * s->hit_def->fields * sizeof (Z32) ); 
+        /*
+	    copy_hits ( w->cached, hits, ctr, w->n_cached ); 
+        */
+        memcpy ( w->cached, gm_get_pos ( hits, ctr), s->hit_def->fields * w->n_cached * sizeof (Z32) ); 
+        status |= RETR_HITS_CACHED;
     }
-  
-  gm_set_pos ( map, map_pos ); 
-
-  if ( status & RETR_END_OF_MAP )
-    status ^= RETR_END_OF_MAP; /* ! */
-
-  return status; 
-
+    gm_set_pos ( map, map_pos ); 
+    if ( status & RETR_END_OF_MAP )
+    	status ^= RETR_END_OF_MAP; /* ! */
+    return status; 
 }
 
 

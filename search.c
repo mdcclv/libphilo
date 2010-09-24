@@ -80,7 +80,7 @@ int delete_search( Search s) {
   return 0;
 }
 
-int set_corpus( Search s, Z8 *corpuspath, Z8 *corpusarg){
+int set_corpus( Search s, Z8 *corpuspath, Z32 corpusarg){
 	struct stat corpusstat;
 	FILE * corpusfile;
 	Z32 *buffer;

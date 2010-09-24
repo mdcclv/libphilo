@@ -5,18 +5,20 @@ import os
 import philologic.Toms as Toms
 
 class AbstractParser:
-    def __init__(self,filename,docid):
+    def __init__(self,filename,docid): # should take object levels, mapping, metapaths as keyword arguments.
         self.reader = None
         self.writer = None
         self.filename = filename
         self.context = []
         self.counts = {}
+        self.current_object = {}
+        self.meta_memory = {}
         self.metahandler = None
-        self.objects = OHCOVector(["doc","div1","div2","div3","para","sent","word"])
-        self.objects.v[0] = docid - 1
+        self.objects = OHCOVector(["doc","div1","div2","div3","para","sent","word"]) # the parser should know what its object levels are.
+        self.objects.v[0] = docid - 1 # - 1 because we're about to increment it.
         self.objects_max = self.objects.v
         self.line_max = 0
-        self.mapping = {"TEI":"doc",
+        self.mapping = {"TEI":"doc",  # the raw mapping should be unambiguous, and context-free.
                         "TEI.2":"doc",
                         "front":"div",
                         "div":"div",
@@ -27,33 +29,49 @@ class AbstractParser:
                         "p":"para",
                         "sp":"para",
                         "stage":"para"}
-
-        self.metamap = { "titleStmt/author" : "author",
+                        # we should be able to put bonus items in here.  "ln":"line", in particular.
+        self.metamap = { "titleStmt/author" : "author", 
                          "titleStmt/title" : "title",
                          "div/head" : "head",
                          "div1/head" : "head"}
+        self.metapaths = { "doc" : {"titleStmt/author" : "author", # metadata paths; order of evaluation is indeterminate, so MAKE SURE that they are unambiguous.
+                                    "titleStmt/title" : "title"},
+                           "div" : {"head":"head"}
+                         } # attributes should go in here too.
+        self.context_memory = {}
+        self.parallel = {"line":0, #this should be implicit.
+                         "byte":0} # this should be automatic.
 
-        self.context_memory = None
-        self.parallel = {"line":0,
-                         "byte":0}
-
-    def context_match(self,context,pattern):
-        nodes = [x for x in pattern.split("/") if x != ""]
-        for node in nodes:
-            if node in context:
-                position = context.index(node)
-                context = context[position:]
-            else:
-                return False
-        return True
+    def parse_metapaths(self):
+        pass
+        
+    def match_metapaths(self):
+        for obj_type, paths in self.metapaths.items():
+            if obj_type in self.meta_memory and self.meta_memory[obj_type]:
+                working_context = self.context[len(self.meta_memory[obj_type]):]
+#                print self.context
+#                print working_context
+#                print self.current_object[obj_type]
+                #metadata xpaths are ALWAYS relative.  I should check for that.
+                for path, destination in paths.items():
+                    if context_match(working_context,path):
+                        leaf = attribute_leaf(path)
+                        if leaf:
+                            return ("meta_attribute",obj_type,leaf)
+                        else:
+                            return ("meta_content",obj_type,destination)
         
     def push_object(self,type):
         self.objects.push(type)
+        self.current_object[type] = self.objects.v[:]
+        self.meta_memory[type] = self.context[:]
         self.objects_max = [max(x,y) for x,y in zip(self.objects.v,self.objects_max)]
         #should maintain a toms stack here, basically.
 
     def pull_object(self,type):
         self.objects.pull(type)
+        self.current_object[type] = None
+        self.meta_memory[type] = None
         self.objects_max = [max(x,y) for x,y in zip(self.objects.v,self.objects_max)]
         #should remove toms from the stack and print them here.
 
@@ -65,10 +83,13 @@ class AbstractParser:
             if n.type == "StartTag":
                 self.parallel["byte"] = n.start
                 self.context.append(n.name)
+                #match metadata after you append: you want to see if you're entering a metadata context.
                 for pattern in self.metamap:
-                    if self.context_match(self.context,pattern):
+                    if context_match(self.context,pattern):
                         self.metahandler = self.metamap[pattern]
                         self.context_memory = self.context
+#                meta_result = self.match_metapaths()
+#                if meta_result: print meta_result
                 if n.name in self.mapping:
                     type = self.mapping[n.name]
                     self.push_object(type)
@@ -90,21 +111,22 @@ class AbstractParser:
                     self.line_max = max(self.parallel["line"],self.line_max)
             elif n.type == "EndTag":
                 self.parallel["byte"] = n.start
+                #match metadata before you pop: you want to see if you're leaving a metadata context.
                 for pattern in self.metamap:
                     if self.context_memory and self.context_memory == self.context:
                         self.metahandler = None
                         self.context_memory = None
-                try:
+                if self.context[-1] == n.name:
                     self.context.pop()
-                except IndexError:
+                else:
                     print >> sys.stderr, "mismatched tag at %s byte %s" % (self.filename,n.start)
                 if n.name in self.mapping:
                     type = self.mapping[n.name]
                     self.pull_object(type)
                     emit_object(self.writer,type,"</" + n.name + ">",self.objects.v,self.parallel["byte"],self.parallel["line"])                           
             elif n.type == "text":
-                self.parallel["byte"] = n.start
-                try:
+                self.parallel["byte"] = n.start 
+                try: # this tokenizer could go into it's own subroutine...
                     text = n.content.decode("UTF-8")
                     tokens = re.finditer(ur"([\w\u2019]+)|([\.;:?!])",text,re.U)
                     offset = self.parallel["byte"]
@@ -130,13 +152,26 @@ class AbstractParser:
         max_v.extend((self.parallel["byte"],self.line_max))
         return (max_v,self.counts)
 
-#And a helper method.
+#And a few helper functions.
 def emit_object(destination, type, content, vector, *bonus):
     print >> destination, "%s %s %s %s" % (type,
                                            content,
                                            " ".join(str(x) for x in vector),
                                            " ".join(str(x) for x in bonus)
                                           )
+
+def context_match(context,pattern): # should be modified to simply IGNORE @attributes
+    nodes = [x for x in pattern.split("/") if x != ""]
+    for node in nodes:
+        if node in context:
+            position = context.index(node)
+            context = context[position:]
+        else:
+            return False
+    return True
+
+def attribute_leaf(pattern): # should return any trailing @attribute leaf node from a path.
+    return None
 
 if __name__ == "__main__":
     import sys
