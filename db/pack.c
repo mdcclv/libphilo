@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 			break;		
 		}
 		state = sscanf(line,
-		               "%s %d %d %d %d %d %d %d %d %s\n", 
+		               "word\t%s\t%d %d %d %d %d %d %d %d %s", 
 		               word, &hit[0],&hit[1],&hit[2],&hit[3],&hit[4],&hit[5],&hit[6],&hit[7], page
 					  );
 

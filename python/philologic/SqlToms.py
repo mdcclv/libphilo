@@ -39,9 +39,9 @@ class SqlToms:
         for row in c:
             yield row
                 
-    def mktoms_sql(file_in,sql_out):
+    def mktoms_sql(self,file_in):
         known_fields = []
-        db = sqlite3.connect(sql_out)
+        db = self.dbh
         db.text_factory = str
         db.execute("CREATE TABLE IF NOT EXISTS toms (philo_type,philo_name,philo_id,philo_seq);")
         s = 0
@@ -51,7 +51,7 @@ class SqlToms:
             if len(fields) == 10: 
                 philo_id = " ".join(fields[:7])
                 raw_attr = fields[9]
-                print raw_attr
+#                print raw_attr
                 r = {}
                 r["philo_type"] = philo_type
                 r["philo_name"] = philo_name
@@ -72,8 +72,8 @@ class SqlToms:
                     rk.append(k)
                     rv.append(v)
                 ks = "(%s)" % ",".join(x for x in rk)
-                print ks
-                print repr(rv)
+#                print ks
+#                print repr(rv)
                 insert = "INSERT INTO toms %s values (%s);" % (ks,",".join("?" for i in rv))
                 db.execute(insert,rv)
                 s += 1
