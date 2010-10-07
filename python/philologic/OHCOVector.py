@@ -7,16 +7,16 @@ import codecs
 
 class OHCOVector:
     def __init__(self,levels):
-        self.levels = levels # raw_hierarchy?
+        self.levels = levels # raw_hierarchy? INNERTYPES
 
         self.v = []
-        self.types = {} #maps literal levels onto hierarchical types.
+        self.types = {} #maps literal levels onto hierarchical types. # TYPEMAP?
 
-        self.hier = []
-        self.maxdepths = {} #the width of each hier type.  anything beyond is nested.
-
-        self.currentdepths = {} # for hier types--from 1 up to max
-        self.nesteddepths = {} # for hier types--only greater than 0 when current==max
+        self.hier = [] #OUTERTYPES
+        self.maxdepths = {} #the width of each hier type.  anything beyond is nested. #OUTERMAXDEPTH
+        
+        self.currentdepths = {} # for hier types--from 1 up to max #OUTERCURRENTDEPTH
+        self.nesteddepths = {} # for hier types--only greater than 0 when current==max OUTERNESTEDDEPTH
         
         for i,lev in enumerate(levels):
             self.v.append(0)
@@ -46,15 +46,14 @@ class OHCOVector:
         #if we have a verbatim type listed in self.levels,
         #we can calculate it's position directly.
         if otype in self.levels:
-            try:
-                depth = self.levels.index(otype)
-                type = self.types[otype]
-                order = self.hier.index(type) # oo bad.
-                current = depth + 1
-                for htype in self.hier[:order]:
-                    for k in range(self.maxdepths[htype]):
-                        current -= 1
-                self.currentdepths[type] = current
+            depth = self.levels.index(otype)
+            type = self.types[otype]
+            order = self.hier.index(type) # oo bad.
+            current = depth + 1
+            for htype in self.hier[:order]:
+                for k in range(self.maxdepths[htype]):
+                    current -= 1
+            self.currentdepths[type] = current
         #if we have a hierarchical type listed in self.hier,
         #we have to walk through the hierarchy, and check the stack,
         #to find the correct position
