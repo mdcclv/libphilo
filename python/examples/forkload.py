@@ -171,7 +171,7 @@ os.system("mv index ../index")
 os.system("mv index.1 ../index.1")
 #os.system("mv all.toms.sorted ../toms")
 print "building metadata db."
-toms = SqlToms.SqlToms(workdir + "toms.db",7)
+toms = SqlToms.SqlToms("../toms.db",7)
 toms.mktoms_sql(workdir + "/all.toms.sorted")
 os.mkdir(destination + "/src/")
 os.system("mv dbspecs4.h ../src/dbspecs4.h")

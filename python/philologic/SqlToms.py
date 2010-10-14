@@ -11,6 +11,21 @@ class SqlToms:
         self.dbh.row_factory = sqlite3.Row
         self.width = w
 
+    def __contains__(self,item):
+        hit_s = hit_to_string(item,self.width)
+        c = self.dbh.cursor()
+        c.execute("SELECT * FROM toms WHERE philo_id=?;",(hit_s,))
+        if c.fetchone():
+            return True
+        else:
+            return False
+
+    def __getitem__(self,item):
+        hit_s = hit_to_string(item,self.width)
+        c = self.dbh.cursor()
+        c.execute("SELECT * FROM toms WHERE philo_id=? LIMIT 1;",(hit_s,))
+        return c.fetchone()
+
     def query(self,**args):
         if not args:
             return
@@ -34,8 +49,10 @@ class SqlToms:
             yield row
 
     def get_children(self,obj):
+        #should take object as a list, not string.
+        obj_string = hit_to_string(obj,self.width)
         c = self.dbh.cursor()
-        c.execute("SELECT * FROM toms WHERE parent=?;",(obj,))
+        c.execute("SELECT * FROM toms WHERE parent=?;",(obj_string,))
         for row in c:
             yield row
                 
@@ -78,20 +95,28 @@ class SqlToms:
                 db.execute(insert,rv)
                 s += 1
         db.commit()
-		
+
+def hit_to_string(hit,width):
+    if len(hit) > width:
+        hit = hit[:width]
+    pad = width - len(hit)
+    hit_string = " ".join(str(h) for h in hit)
+    hit_string += "".join(" 0" for n in range(pad))
+    return hit_string
+
 def obj_cmp(x,y):
-	for a,b in zip(x,y):
-		if a < b:
-			return -1
-		if a > b:
-			return 1
-	else:
-		return 0
+    for a,b in zip(x,y):
+        if a < b:
+            return -1
+        if a > b:
+            return 1
+    else:
+        return 0
 
 def obj_contains(x,y):
-	pass
+    pass
 
 if __name__ == "__main__":
-	import sys
-	mktoms_sql(sys.argv[1],sys.argv[2])
-	
+    import sys
+    mktoms_sql(sys.argv[1],sys.argv[2])
+    

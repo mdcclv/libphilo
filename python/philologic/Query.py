@@ -7,14 +7,16 @@ import struct
 import HitList
 import re
 
-def query(db,terms,corpus_file=None,corpus_size=0,method=None,method_arg=None):
+def query(db,terms,corpus_file=None,corpus_size=0,method=None,method_arg=None,limit=3000,filename=""):
     sys.stdout.flush()
     expandedterms = format_query(terms)
     words_per_hit = len(terms.split(" "))
     origpid = os.getpid()
-    hfile = str(origpid) + ".hitlist"
+    if not filename:
+        hfile = str(origpid) + ".hitlist"
     dir = "/var/lib/philologic/hitlists/"
-    hl = open(dir + hfile, "w")
+    filename = filename or (dir + hfile)
+    hl = open(filename, "w")
     err = open("/dev/null", "w")
     pid = os.fork()
     if pid == 0:
@@ -23,10 +25,10 @@ def query(db,terms,corpus_file=None,corpus_size=0,method=None,method_arg=None):
         os.setsid()
         pid = os.fork()
         if pid > 0:
-            sys.exit(0)
+            os._exit(0)
         else:
             #now we're detached from the parent, and can do our work.
-            args = ["search4", db]
+            args = ["search4", db,"--limit",str(limit)]
             if corpus_file and corpus_size:
                 args.extend(("--corpusfile", corpus_file , "--corpussize" , str(corpus_size)))
             worker = subprocess.Popen(args,stdin=subprocess.PIPE,stdout=hl,stderr=err)
@@ -34,13 +36,13 @@ def query(db,terms,corpus_file=None,corpus_size=0,method=None,method_arg=None):
             worker.stdin.close()
             worker.wait()
             #do something to mark query as finished
-            flag = open(dir + hfile + ".done","w")
+            flag = open(filename + ".done","w")
             flag.write(" ".join(args) + "\n")
             flag.close()
-            sys.exit(0)
+            os._exit(0)
     else:
         hl.close()
-        return HitList.HitList("/var/lib/philologic/hitlists/" + hfile,words_per_hit)
+        return HitList.HitList(filename,words_per_hit)
 
 def format_query(qstring):
     q = [level.split("|") for level in qstring.split(" ") ]
