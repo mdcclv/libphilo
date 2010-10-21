@@ -28,7 +28,6 @@ workdir = destination + "/WORK/"
 textdir = destination + "/TEXT/"
 os.mkdir(workdir)
 os.mkdir(textdir)
-os.chdir(workdir)
 
 texts = sys.argv[2:]
 if not sys.argv[2:]:
@@ -49,6 +48,8 @@ fileinfo = [{"orig":os.path.abspath(x),
 print "copying raw data into place..."
 for t in fileinfo:
     os.system("cp %s %s" % (t["orig"],t["newpath"]))
+
+os.chdir(workdir)
 
 #We'll define our parse routine here, then call it below in the fork loop.
 def parsework(name,docid,path,raw,words,toms,sortedtoms,results):

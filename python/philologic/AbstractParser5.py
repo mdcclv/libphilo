@@ -133,7 +133,8 @@ class AbstractParser:
                 if node.name == name: # we know this is the end because self.mapping is unambiguous, right?
                     my_attributes["end"] = node.start + len(node.content)
                     break
-
+        if "end" not in my_attributes:
+            my_attributes["end"] = self.parallel["byte"]
         self.emit(type,name, my_id,my_attributes["start"],self.parallel["line"],**my_attributes)
         self.object_stack.pop()
         self.objects.pull(type)

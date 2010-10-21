@@ -31,7 +31,7 @@ class PhiloDB:
         corpus_count = 0
         print >> sys.stderr, "metadata = %s" % repr(metadata)
         if metadata:
-            corpus_file = "/var/lib/philologic/hitlists/" + hex_hash + " .corpus"
+            corpus_file = "/var/lib/philologic/hitlists/" + hex_hash + ".corpus"
             corpus_fh = open(corpus_file,"wb")
             for c_obj in self.toms.query(**metadata):
                 c_id = [int(x) for x in c_obj["philo_id"].split(" ")]
