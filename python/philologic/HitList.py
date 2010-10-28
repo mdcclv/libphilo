@@ -7,12 +7,14 @@ import codecs
 import struct
 
 class HitList(object):
-    def __init__(self,filename,words):
+    def __init__(self,filename,words,doc=0,byte=6):
         self.filename = filename
         self.words = words
         self.fh = open(self.filename) #need a full path here.
         self.format = "=6H" + str(words) + "I" #short for object id's, int for byte offset.
         self.hitsize = struct.calcsize(self.format) 
+        self.doc = doc
+        self.byte = byte
         self.position = 0;
         self.done = False
         #self.hitsize = 4 * (6 + self.words) # roughly.  packed 32-bit ints, 4 bytes each.
@@ -68,3 +70,9 @@ class HitList(object):
         buffer = self.fh.read(self.hitsize)
         return(struct.unpack(self.format,buffer))
     
+    def get_doc(self,hit):
+        return hit[self.doc]
+        
+    def get_byte(self,hit):
+        return hit[self.byte]
+        
