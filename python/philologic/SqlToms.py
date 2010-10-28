@@ -124,6 +124,8 @@ class SqlToms:
         db.commit()
 
 def hit_to_string(hit,width):
+    if isinstance(hit,int):
+        hit = [hit]
     if len(hit) > width:
         hit = hit[:width]
     pad = width - len(hit)
