@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 		}
 		if (argcounter == 3) {
 		  strncpy(search_arg, argv[optind], 256);
-		  printf("search arg is %s\n",search_arg);
+		  //		  printf("search arg is %s\n",search_arg);
 		  arg_set = 1;
 		}
 		optind += 1;

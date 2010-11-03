@@ -31,6 +31,8 @@ def query(db,terms,corpus_file=None,corpus_size=0,method=None,method_arg=None,li
             args = ["search4", db,"--limit",str(limit)]
             if corpus_file and corpus_size:
                 args.extend(("--corpusfile", corpus_file , "--corpussize" , str(corpus_size)))
+            if method and method_arg:
+                args.extend((method,str(method_arg)))
             worker = subprocess.Popen(args,stdin=subprocess.PIPE,stdout=hl,stderr=err)
             worker.communicate(format_query(terms))
             worker.stdin.close()
