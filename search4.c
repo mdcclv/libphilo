@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 		strncpy(method,"phrase",256);
 	}
 	if (arg_set) {
-	  temp_search_arg = malloc(sizeof(Z8 *) * strlen(search_arg));
+	  temp_search_arg = malloc(sizeof(Z8 *) * 256);
 	  strncpy(temp_search_arg,search_arg,256);
 	}
 	s = new_search(db, method, temp_search_arg, ascii_set,limit,corpussize,corpusfile);
