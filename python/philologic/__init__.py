@@ -3,9 +3,9 @@ import AbstractParser5
 import DirtyFormatter
 import DirtyParser
 import DynamicForm
-import Formatter
 import HitList
 import OHCOVector
+import PhiloDB
 import Query
 import TEIParser
 import SqlToms

@@ -70,7 +70,7 @@ def simple_dispatch(environ, start_response):
         qs = environ["parsed_params"]["query"][0]
         q_start = int(environ["parsed_params"].get('q_start',[0])[0]) or 0
         q_end = int(environ["parsed_params"].get('q_end',[0])[0]) or q_start + 50        
-        f = Formatter.Formatter({})
+        f = DirtyFormatter.Formatter({})
 
         yield "<html><body><div class='conc_response'>running query for '%s'<br/>" % qs 
         print >> environ["wsgi.errors"], str(corpus_file)
