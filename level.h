@@ -70,7 +70,22 @@ struct Batch
   Gmap     stored;
 };
 
+#ifndef SEARCH_H
+  #include "search.h"
+#endif
+
+void init_batchObject ( Batch b, N32 n );
+Z32 process_input ( Search s, FILE *f );
+Z32 create_batches ( Search s, FILE *f );
+Z32 process_batch ( Search s, FILE *f, N32 bn );
+void sort_batches ( Batch b, N32 n );
+int batch_sort_function ( const void *v0, const void *v1 );
+void rearrange_batches ( Search s );
+int delete_batch(Batch b);
+
 #endif /* #ifdef BATCH_H */
+
+
 
 
 

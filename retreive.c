@@ -39,372 +39,240 @@ Z32 chkstatus_ERR ( Z32 status )
 Z32 process_single_entry_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res )
 {
   Batch b = s->batches + bn; 
-
   Z32 *res_ptr  =  NULL;
-  Z32 *map_ptr  =  NULL;
-  
+  Z32 *map_ptr  =  NULL;  
   Z32  status   =  0;
 
   s_log ( s->debug, L_INFO, NULL, "processing single boolean NOT entry." );
-
-  
-  if ( !map ) 
-    {
-      s_log ( s->debug, L_ERROR, 
-	      NULL, "process_single_entry_boolean called w/out a map" );
-
-      return RETR_BUMMER;
-    }
-
+  if ( !map ) {
+    s_log ( s->debug, L_ERROR, NULL, "process_single_entry_boolean called w/out a map" );
+    return RETR_BUMMER;
+  }
   map_ptr = gm_get_cur_pos ( map ); 
-
   s_log ( s->debug, L_INFO, "(word is from document %d)", (Z8*)(w->dir->gm_h[w->dir->gm_f*n]) );
-
-
-  while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos (w->dir, n), s->hit_def, bn) < 0 )
-    {
-      res_ptr = gm_get_eod ( res ); 
-      memcpy ( res_ptr, map_ptr, map->gm_f * sizeof(Z32) );
-      gm_inc_eod ( res ); 
-
-      s_log ( s->debug, L_INFO, "single boolean NOT entry; %d hits on the results map;", (Z8*)res->gm_eod );
-
-      if ( !gm_inc_pos ( map ) ) 
+  while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos (w->dir, n), s->hit_def, bn) < 0 ) {
+    res_ptr = gm_get_eod ( res ); 
+    memcpy ( res_ptr, map_ptr, map->gm_f * sizeof(Z32) );
+    gm_inc_eod ( res ); 
+    s_log ( s->debug, L_INFO, "single boolean NOT entry; %d hits on the results map;", (Z8*)res->gm_eod );
+    if ( !gm_inc_pos ( map ) ) {
 	return RETR_END_OF_MAP;
-
-      map_ptr = gm_get_cur_pos ( map ); 
     }
-  
-  if ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( w->dir, n), s->hit_def, bn) > 0 ) 
+    map_ptr = gm_get_cur_pos ( map ); 
+  }
+  if ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( w->dir, n), s->hit_def, bn) > 0 ) {
     status = RETR_BLK_CLEAN; 
-  
-
-
-  while (!s->hit_def->levels[bn].h2m_cmp_func (map_ptr, gm_get_pos ( w->dir, n), s->hit_def, bn))
-    {
-      /* 
-	 this means we found one or more matches; we 
-	 skip them; 
-       */
-
-      if ( !gm_inc_pos ( map ) ) 
-	return RETR_END_OF_MAP;
-      map_ptr = gm_get_cur_pos ( map ); 
+  }
+  while (!s->hit_def->levels[bn].h2m_cmp_func (map_ptr, gm_get_pos ( w->dir, n), s->hit_def, bn)) {
+      /* this means we found one or more matches; we 
+	 skip them; */
+    if ( !gm_inc_pos ( map ) ) {
+      return RETR_END_OF_MAP;
     }
+    map_ptr = gm_get_cur_pos ( map ); 
+  }
 
-  if ( b->blkmapctr == b->blockmap_l - 1 )
-    {
-      /* 
-	 it is safe to load the rest of the map onto 
+  if ( b->blkmapctr == b->blockmap_l - 1 ) {
+      /* it is safe to load the rest of the map onto 
 	 the result map! 
 	 Plus, we know that we still have something left on the 
 	 map -- otherwise, we would have already returned
-	 RETR_END_OF_MAP;
-       */
-
-      while ( 1 )
-	{
-	  res_ptr = gm_get_eod ( res ); 
-	  memcpy ( res_ptr, map_ptr, map->gm_f * sizeof(Z32) );
-	  gm_inc_eod ( res ); 
-
-	  s_log ( s->debug, L_INFO, "(NOT) loading rest of map; %d results;", (Z8*)res->gm_eod );
-	  
-
-	  if ( !gm_inc_pos ( map ) ) 
-	    break;
-
-	  map_ptr = gm_get_cur_pos ( map ); 
-
-	}
-
-	status |= RETR_END_OF_MAP;
+	 RETR_END_OF_MAP; */
+    while ( 1 ) {
+      res_ptr = gm_get_eod ( res ); 
+      memcpy ( res_ptr, map_ptr, map->gm_f * sizeof(Z32) );
+      gm_inc_eod ( res ); 
+      s_log ( s->debug, L_INFO, "(NOT) loading rest of map; %d results;", (Z8*)res->gm_eod );  
+      if ( !gm_inc_pos ( map ) ) {
+	break;
+      }
+      map_ptr = gm_get_cur_pos ( map ); 
     }
-
+    status |= RETR_END_OF_MAP;
+  }
   status |= RETR_BLK_CLEAN;
-
   return status; 
 }
 
 Z32 filternload_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap hits, Z32 howmany, Gmap res )
 {
   Batch b = s->batches + bn; 
-
-
   Z32 status     = 0; 
   Z32 put_status = 0; 
-
   Z32 *map_ptr   = NULL;
   Z32 *res_ptr   = NULL;
   Z32  ctr       = 0;       
-
   Z32 j          = 0; 
-
   Z32 *next_block_bndry = NULL; 
 
-  if ( b->blkmapctr < b->blockmap_l - 1 )
-    {
+  if ( b->blkmapctr < b->blockmap_l - 1 ) {
        if ( b->blockmap[b->blkmapctr+1].w->n_cached &&
-	    ( b->blockmap[b->blkmapctr+1].w->blk_cached == b->blockmap[b->blkmapctr+1].n ) )
+	    ( b->blockmap[b->blkmapctr+1].w->blk_cached == b->blockmap[b->blkmapctr+1].n ) ) {
 	 next_block_bndry = (Z32 *)b->blockmap[b->blkmapctr+1].w->cached; 
-       else
+       }
+       else {
 	 next_block_bndry = gm_get_pos(b->blockmap[b->blkmapctr+1].w->dir, b->blockmap[b->blkmapctr+1].n);
+       }
     }
 
   map_ptr = gm_get_cur_pos ( map ); 
-
-
-  /* 
-     OK, here's the logic of what we are doing here: 
+  /* OK, here's the logic of what we are doing here: 
 
      we have a block ("hits") of <howmany> hits; we also have the map
      from the previous pass. We are searching for hits from the map
      that do not have matches in the hitlists generated on this search 
-     level. 
-   */
+     level. */
 
   ctr = 0; 
-
-
   if ( s->hit_def->levels[bn].h2m_cmp_func 
-       ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) < 0 )
-    {
-      /*
-	This should not happen -- we FF-d the map when we retreive the 
-	hit block.
-      */
-
+       ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) < 0 ) {
+      /*This should not happen -- we FF-d the map when we retreive the 
+	hit block.*/
       s_log ( s->debug, L_ERROR, 
-	      NULL, "current map element is BELOW the lower boundary of the hitblock in filternload_booleannot" );
-      
+	      NULL, "current map element is BELOW the lower boundary of the hitblock in filternload_booleannot" );      
       return RETR_BUMMER;
-    }
-  
-
-  
-  while ( ctr < howmany ) 
-    {
-      map_ptr = gm_get_cur_pos ( map ); 
+  }  
+  while ( ctr < howmany ) {
+    map_ptr = gm_get_cur_pos ( map ); 
+    while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) ) {
+      if ( ( b->blkmapctr < b->blockmap_l - 1 )
+	   && ( s->hit_def->levels[bn].h2h_cmp_func ( gm_get_pos ( hits, ctr ), next_block_bndry, s->hit_def, bn) >= 0 ) ) { 
+	s_log ( s->debug, L_INFO, "reached the boundary of the next block in filternload_boolean, 2nd loop entry; hit %d.", (Z8*)ctr ); 	
+	status |= RETR_REACHED_NEXT_BLOCK_BOUNDARY; 
+	break; 
+      }
+      while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) < 0 ) {
+	res_ptr = gm_get_eod ( res ); 
+	memcpy ( (void *)res_ptr, (const void *)map_ptr, (size_t) map->gm_f * sizeof (Z32) );
+	gm_inc_eod ( res ); 
+	
+	/*  Now we try to increment the search map;
+	    if we've reached the end of the map we should
+	    (obviously) stop searching. But we don't want to
+	    discard this hitblock just yet; because maybe more
+	    matching hits on the previous level will be found
+	    during the next iteration. */
+	
+	if ( !gm_inc_pos ( map ) ) {
+	  status |= RETR_END_OF_MAP;
+	  s_log ( s->debug, L_INFO, NULL, "END OF MAP reached while filtering w/boolean NOT operator;" ); 
+	  break;
+	}      
+	map_ptr = gm_get_cur_pos ( map ); 
+      }
+      if ( status & RETR_END_OF_MAP ) {
+	break;
+      }
+      /* and now we have to FF the hit list until we find a hit
+	 that's less than or equal the current map object; thus, 
+	 continuing alternating between these 2 loops, we are going
+	 to either find a match, or reach the end of either the map
+	 or the hit block.  */
       
-      while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) )
-	{
-	 
-	  if ( ( b->blkmapctr < b->blockmap_l - 1 )
-	       &&
-	       ( s->hit_def->levels[bn].h2h_cmp_func ( gm_get_pos ( hits, ctr ), next_block_bndry, s->hit_def, bn) >= 0 ) )  
-	    { 
-	      s_log ( s->debug, L_INFO, "reached the boundary of the next block in filternload_boolean, 2nd loop entry; hit %d.", (Z8*)ctr ); 
-		   
-	      status |= RETR_REACHED_NEXT_BLOCK_BOUNDARY; 
-	      break; 
-	    }
-
-	  while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) < 0 )
-	    {
-	      res_ptr = gm_get_eod ( res ); 
-	      memcpy ( (void *)res_ptr, (const void *)map_ptr, (size_t) map->gm_f * sizeof (Z32) );
-	      gm_inc_eod ( res ); 
-
-	      /* 
-		 Now we try to increment the search map;
-
-		 if we've reached the end of the map we should
-		 (obviously) stop searching. But we don't want to
-		 discard this hitblock just yet; because maybe more
-		 matching hits on the previous level will be found
-		 during the next iteration.
-	       */
-	      
-	      if ( !gm_inc_pos ( map ) ) 
-		{
-		  status |= RETR_END_OF_MAP;
-	
-		  s_log ( s->debug, L_INFO, NULL, "END OF MAP reached while filtering w/boolean NOT operator;" ); 
-		  break;
-		}
-	      
-	      map_ptr = gm_get_cur_pos ( map ); 
-
-
-	    }
-
-	  if ( status & RETR_END_OF_MAP )
-	    break;
-
-	  /* 
-	     and now we have to FF the hit list until we find a hit
-	     that's less than or equal the current map object; thus, 
-	     continuing alternating between these 2 loops, we are going
-	     to either find a match, or reach the end of either the map
-	     or the hit block. 
-	  */
-
-	  while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) > 0 ) 
-	    {
-
-	      ctr++; 
-	      
-	      /* 
-		 again, if we have reached the end of the block before
-		 we found an exact match -- there's nothing (left) for us
-		 in this block and it is safe to mark the block as "clean".
-	      */
-	      
-	      if ( ctr == howmany )
-		{
-		  status |= RETR_BLK_CLEAN;
-		  break;
-		}
-
-
-	      if ( ( b->blkmapctr < b->blockmap_l - 1 )
-		   &&
-		   ( s->hit_def->levels[bn].h2h_cmp_func ( gm_get_pos ( hits, ctr), next_block_bndry, s->hit_def, bn) >= 0 ) )  
-		{ 
-		  s_log ( s->debug, L_INFO, "reached the boundary of the next block in filternload_boolean; hit %d.", (Z8*)ctr ); 
-
-		   
-		  status |= RETR_REACHED_NEXT_BLOCK_BOUNDARY; 
-		  break; 
-		}
-
-	    }
-
-	  if ( status & RETR_BLK_CLEAN )
-	    break;
-
-	
+      while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) > 0 ) {
+	ctr++; 
+	if ( ctr == howmany ) { //if we are at the end of a block...
+	  status |= RETR_BLK_CLEAN;
+	  break;
 	}
-
-      if ( ( status & RETR_END_OF_MAP ) || 
-	   ( status & RETR_BLK_CLEAN ) || 
-	   ( status & RETR_REACHED_NEXT_BLOCK_BOUNDARY) )
-	break;
-
-      /* 
-	 If we are still here, it means that we came across one or more
-	 matches. We simply skip them. 
-       */
-
-      while ( !s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) )
-	{
-	  if ( !gm_inc_pos ( map ) ) 
-	    {
-	      status |= RETR_END_OF_MAP;
-	
-	      s_log ( s->debug, L_INFO, NULL, "END OF MAP reached while skipping matching entry (boolean NOT search);" ); 
-	      break;
-	    }
-
-	  map_ptr = gm_get_cur_pos ( map ); 
+	if ( ( b->blkmapctr < b->blockmap_l - 1 ) &&
+	     ( s->hit_def->levels[bn].h2h_cmp_func ( gm_get_pos ( hits, ctr), next_block_bndry, s->hit_def, bn) >= 0 ) ) { 
+	  s_log ( s->debug, L_INFO, "reached the boundary of the next block in filternload_boolean; hit %d.", (Z8*)ctr ); 		   
+	  status |= RETR_REACHED_NEXT_BLOCK_BOUNDARY; 
+	  break; 
 	}
+      }
 
-      if ( ( status & RETR_END_OF_MAP ) )
-	break;
-
-      ctr++;
-
+      if ( status & RETR_BLK_CLEAN )
+	break;      
     }
+    if ( ( status & RETR_END_OF_MAP ) || 
+	 ( status & RETR_BLK_CLEAN ) || 
+	 ( status & RETR_REACHED_NEXT_BLOCK_BOUNDARY) )
+      break;
 
+    /* If we are still here, it means that we came across one or more
+       matches. We simply skip them. */
 
-  if ( ( b->blkmapctr == b->blockmap_l - 1 ) && !( status & RETR_END_OF_MAP ) )
-    {
-      /* it is safe to load the rest of the map onto 
-	 the result map! */
-
-      while ( 1 ) 
-	{
-	  map_ptr = gm_get_cur_pos ( map ); 
-	  res_ptr = gm_get_eod ( res ); 
-	  memcpy ( res_ptr, map_ptr, map->gm_f * sizeof(Z32) );
-	  gm_inc_eod ( res ); 
-
-	  if ( !gm_inc_pos ( map ) ) 
-	    break;
-	}
-
+    while ( !s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( hits, ctr), s->hit_def, bn ) ) {
+      if ( !gm_inc_pos ( map ) ) {
 	status |= RETR_END_OF_MAP;
+	s_log ( s->debug, L_INFO, NULL, "END OF MAP reached while skipping matching entry (boolean NOT search);" ); 
+	break;
+      }
+      map_ptr = gm_get_cur_pos ( map ); 
     }
+    if ( ( status & RETR_END_OF_MAP ) )
+      break;
+    ctr++;
+  }
 
+  if ( ( b->blkmapctr == b->blockmap_l - 1 ) && !( status & RETR_END_OF_MAP ) ) {
+    /* it is safe to load the rest of the map onto the result map! */
+    while ( 1 ) {
+      map_ptr = gm_get_cur_pos ( map ); 
+      res_ptr = gm_get_eod ( res ); 
+      memcpy ( res_ptr, map_ptr, map->gm_f * sizeof(Z32) );
+      gm_inc_eod ( res ); 
+      if ( !gm_inc_pos ( map ) ) 
+	break;
+    }
+    status |= RETR_END_OF_MAP;
+  }
 
-
-  /* 
-     If we have finished the entire hitblock, depending on how it 
+  /* If we have finished the entire hitblock, depending on how it 
      happened (whether the last hit in the block was a match or not)
-     we might have not detected the fact; so let's check again:
-   */
+     we might have not detected the fact; so let's check again: */
 
-  if ( ctr == howmany )
-    {
-      s_log ( s->debug, L_INFO, NULL, "REACHED THE END OF HITBLOCK;" );
-      status |= RETR_BLK_CLEAN;
-    }
+  if ( ctr == howmany ) {
+    s_log ( s->debug, L_INFO, NULL, "REACHED THE END OF HITBLOCK;" );
+    status |= RETR_BLK_CLEAN;
+  }
 
-  if ( res->gm_eod >= s->batch_limit )
+  if ( res->gm_eod >= s->batch_limit ) {
     status |= RETR_RESMAP_FULL; 
-
-  /* let's see if we've got any unprocessed hits left: */
-
-  if ( howmany - ctr )
-    {
-      w->blk_cached = n; 
-      
-      w->n_cached   = howmany - ctr; 
-      /*w->cached     = (hit *) malloc ( w->n_cached * sizeof( hit ) ); */
-      w->cached     = (Z32 *) malloc ( w->n_cached * s->hit_def->fields * sizeof (Z32) );
-
-      /*
-	copy_hits ( w->cached, hits, ctr, w->n_cached ); 
-       */
-
-      memcpy ( w->cached, gm_get_pos ( hits, ctr), s->hit_def->fields * sizeof (32) * w->n_cached ); 
-
-      status |= RETR_HITS_CACHED;
-    }
+  }
   
+  /* let's see if we've got any unprocessed hits left: */
+  if ( howmany - ctr ) {
+    w->blk_cached = n;      
+    w->n_cached   = howmany - ctr; 
+    /* w->cached     = (hit *) malloc ( w->n_cached * sizeof( hit ) ); */
+    w->cached     = (Z32 *) malloc ( w->n_cached * s->hit_def->fields * sizeof (Z32) );
+    /* copy_hits ( w->cached, hits, ctr, w->n_cached ); */
+    memcpy ( w->cached, gm_get_pos ( hits, ctr), s->hit_def->fields * sizeof (32) * w->n_cached ); 
+    status |= RETR_HITS_CACHED;
+  }
   return status; 
-
 }
 
-Gmap
-retreive_hit_block_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res, N32 *howmany )
+Gmap retreive_hit_block_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res, N32 *howmany )
 {
   Z32 status   = 0;
   Z32 *map_ptr = gm_get_cur_pos ( map );
   Z32 *res_ptr = NULL;
-  Z32 map_pos  = map->gm_c;
-  
+  Z32 map_pos  = map->gm_c;  
   Gmap hits;
-
   Z32 j; 
 
   *howmany = 0; 
-
-
   s_log ( s->debug, L_INFO, "retreive_hit_block/NOT: entry %d", (Z8 *)n ); 
   /*s_log ( s->debug, L_INFO, "retreive_hit_block/NOT: document %d", (Z8 *)((w->dir)[n].index[0]) ); */
-
   s_log ( s->debug, L_INFO, "retreiving/NOT; search map position: %d", (Z8 *)map_pos ); 
 
-  /* 
-     if the whole block is completely beyond the map boundary,
+  /* if the whole block is completely beyond the map boundary,
      we are not interested in it -- that is, for now. 
      But whatever is below the lower boundary of the hitblock on 
      the map is by all means valid result material, so we are 
-     going to put it on the result map. 
-  */  
+     going to put it on the result map.  */  
 
-  while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( w->dir, n ), s->hit_def, bn) < 0 )
-    {
+  while ( s->hit_def->levels[bn].h2m_cmp_func ( map_ptr, gm_get_pos ( w->dir, n ), s->hit_def, bn) < 0 ) {
       /* PUT HIT ON THE RESULT MAP */
+      res_ptr = gm_get_eod( res ); 
+      memcpy( (void *)res_ptr, (const void *)map_ptr, (size_t) map->gm_f * sizeof (Z32) );
+      gm_inc_eod( res ); 
 
-      res_ptr = gm_get_eod ( res ); 
-      memcpy ( (void *)res_ptr, (const void *)map_ptr, (size_t) map->gm_f * sizeof (Z32) );
-      gm_inc_eod ( res ); 
-
-
-      /*
-	if this block of hits is indeed completely outside (beyond)
+      /*if this block of hits is indeed completely outside (beyond)
 	the map we should simply left it untouched. Because there may
 	or may not be hits matching the objects in this block found in
 	the next iteration of the previous search level.  (unless the
@@ -412,43 +280,27 @@ retreive_hit_block_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap r
 	contents of the search map onto the results map!  */
 	 
       if ( !gm_inc_pos ( map ) ) return (Gmap)-1;
-
       map_ptr = gm_get_cur_pos ( map ); 
-    }
+  }
 
   map_pos = map->gm_c; 
-
   s_log ( s->debug, L_INFO, "retreiving/NOT; search map position (FF-d): %d", (Z8 *)map_pos ); 
+  /* if it's completely below, we simply discard the block. */
 
-
-  /* 
-     if it's completely below, we simply discard the block. 
-   */
-
-  if ( n < w->blkcount - 1 
-       && 
-       s->hit_def->levels[bn].h2m_cmp_func 
-       ( map_ptr, gm_get_pos ( w->dir, n+1 ), s->hit_def, bn) > 0 )
-    {
-      s_log ( s->debug, L_INFO, NULL, "block completely below the map; returning;" );      
-
-      w->offset+=s->db->dbspec->block_size;
-      return NULL;
-    }
-
+  if ( n < w->blkcount - 1 && 
+       s->hit_def->levels[bn].h2m_cmp_func( map_ptr, gm_get_pos ( w->dir, n+1 ), s->hit_def, bn) > 0 ) {
+    s_log ( s->debug, L_INFO, NULL, "block completely below the map; returning;" );      
+    w->offset+=s->db->dbspec->block_size;
+    return NULL;
+  }
   s_log ( s->debug, L_INFO, "calling gethits on map block %d;", (Z8*)n );
   
   hits = new_Gmap ( 0, s->hit_def->fields ); 
-
   hits->gm_h =  hit_gethits ( s->db,w->type, gm_get_pos ( w->dir, n ), w->offset, howmany );
   hits->gm_l =  *howmany; 
-
   s_log ( s->debug, L_INFO, "gethits got us %d hits;", (Z8*)(*howmany) );
-
   w->offset+=s->db->dbspec->block_size;
-
   return hits; 
-  
 }
 
 Gmap
