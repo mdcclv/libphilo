@@ -43,5 +43,22 @@
 
 
   extern N32 retreive_hits ( Search s, N level, Gmap, Gmap ); 
+N32 retreive_hits ( Search s, N level, Gmap map, Gmap res );
+Z32 process_block_unit ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res );
+Z32 process_hit_block ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res );
+Gmap retreive_cached_hits ( Search s, N8 bn, Word w, N32 n, Gmap map, N32 *howmany );
+Gmap retreive_hit_block ( Search s, N8 bn, Word w, N32 n, Gmap map, N32 *howmany );
+Z32 filternload_hits ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap hits, N32 howmany, Gmap res ) ;
+Z32 load_hits ( Search s, Gmap hits, N32 howmany, Gmap res );
+Z32 process_single_entry ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res );
+Z32 filter_single_entry ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res );
+Z32 process_hit_block_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res );
+Gmap retreive_hit_block_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res, N32 *howmany );
+Gmap retreive_cached_hits_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res, N32 *howmany );
+Z32 process_single_entry_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap res );
+Z32 filternload_booleannot ( Search s, N8 bn, Word w, N32 n, Gmap map, Gmap hits, Z32 howmany, Gmap res );
+Z32 chkstatus_EOM ( Z32 status );
+Z32 chkstatus_CACH ( Z32 status );
+Z32 chkstatus_ERR ( Z32 status );
 
 #endif
